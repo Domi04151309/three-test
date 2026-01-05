@@ -13,6 +13,8 @@ export class Player {
   public object: THREE.Object3D;
   public viewModel: THREE.Group;
   private bobTime = 0;
+  private baseViewPos: THREE.Vector3;
+  private baseViewRot: THREE.Euler;
   private velocity: THREE.Vector3;
   private direction: THREE.Vector3;
   private moveForward = false;
@@ -24,6 +26,10 @@ export class Player {
   public readonly gravity: number;
   public readonly jumpVelocity: number;
   public readonly height: number;
+  private readonly bobFreq = 8;
+  private readonly bobAmpY = 0.03;
+  private readonly bobAmpX = 0.02;
+  private readonly bobRotZ = 0.03;
 
   constructor(
     camera: THREE.Camera,
@@ -51,6 +57,10 @@ export class Player {
     this.viewModel.add(leftHand, rightHand);
     this.viewModel.position.set(0, -0.2, -0.5);
     this.object.add(this.viewModel);
+
+    // Cache base transforms for view-model bobbing
+    this.baseViewPos = this.viewModel.position.clone();
+    this.baseViewRot = this.viewModel.rotation.clone();
 
     this.velocity = new THREE.Vector3();
     this.direction = new THREE.Vector3();
@@ -81,26 +91,26 @@ export class Player {
     document.addEventListener('keyup', this.onKeyUp);
   }
 
-  private onKeyDown = (event: KeyboardEvent): void => {
-    switch (event.code) {
+  private handleKey(code: string, down: boolean): void {
+    switch (code) {
       case 'ArrowUp':
       case 'KeyW':
-        this.moveForward = true;
+        this.moveForward = down;
         break;
       case 'ArrowLeft':
       case 'KeyA':
-        this.moveLeft = true;
+        this.moveLeft = down;
         break;
       case 'ArrowDown':
       case 'KeyS':
-        this.moveBackward = true;
+        this.moveBackward = down;
         break;
       case 'ArrowRight':
       case 'KeyD':
-        this.moveRight = true;
+        this.moveRight = down;
         break;
       case 'Space':
-        if (this.canJump) {
+        if (down && this.canJump) {
           this.velocity.y += this.jumpVelocity;
           this.canJump = false;
         }
@@ -108,29 +118,14 @@ export class Player {
       default:
         break;
     }
+  }
+
+  private onKeyDown = (event: KeyboardEvent): void => {
+    this.handleKey(event.code, true);
   };
 
   private onKeyUp = (event: KeyboardEvent): void => {
-    switch (event.code) {
-      case 'ArrowUp':
-      case 'KeyW':
-        this.moveForward = false;
-        break;
-      case 'ArrowLeft':
-      case 'KeyA':
-        this.moveLeft = false;
-        break;
-      case 'ArrowDown':
-      case 'KeyS':
-        this.moveBackward = false;
-        break;
-      case 'ArrowRight':
-      case 'KeyD':
-        this.moveRight = false;
-        break;
-      default:
-        break;
-    }
+    this.handleKey(event.code, false);
   };
 
   update(delta: number): void {
@@ -166,29 +161,17 @@ export class Player {
   }
 
   applyViewBobbing(delta: number): void {
-    // Initialize base transforms if needed
-    if (!this.viewModel.userData.basePosition) {
-      this.viewModel.userData.basePosition = this.viewModel.position.clone();
-      this.viewModel.userData.baseRotation = this.viewModel.rotation.clone();
-    }
-
-    const basePos: THREE.Vector3 = this.viewModel.userData.basePosition;
-    const baseRot: THREE.Euler = this.viewModel.userData.baseRotation;
+    const basePos = this.baseViewPos;
+    const baseRot = this.baseViewRot;
 
     const isMoving =
       this.moveForward || this.moveBackward || this.moveLeft || this.moveRight;
 
-    // Bobbing parameters
-    const walkFreq = 8;
-    const walkAmpY = 0.03;
-    const walkAmpX = 0.02;
-    const rotAmpZ = 0.03;
-
     if (isMoving) {
-      this.bobTime += delta * walkFreq;
-      const bobY = Math.abs(Math.sin(this.bobTime)) * walkAmpY;
-      const bobX = Math.sin(this.bobTime * 2) * walkAmpX;
-      const rotZ = Math.sin(this.bobTime) * rotAmpZ;
+      this.bobTime += delta * this.bobFreq;
+      const bobY = Math.abs(Math.sin(this.bobTime)) * this.bobAmpY;
+      const bobX = Math.sin(this.bobTime * 2) * this.bobAmpX;
+      const rotZ = Math.sin(this.bobTime) * this.bobRotZ;
 
       this.viewModel.position.set(
         basePos.x + bobX,
