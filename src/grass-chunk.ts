@@ -313,8 +313,8 @@ void main(){
   vec3 normal;
   if(gl_FrontFacing) normal = normalize(vNormal); else normal = normalize(-vNormal);
   vec3 textureColour = pow(texture2D(map, vUv).rgb, vec3(2.2));
-  vec3 mixColour = idx > 0.75 ? vec3(0.2,0.8,0.06) : vec3(0.5,0.8,0.08);
-  textureColour = mix(0.1 * mixColour, textureColour, 0.75);
+  vec3 mixColour = idx > 0.75 ? vec3(0.35,0.55,0.20) : vec3(0.45,0.60,0.25);
+  textureColour = mix(0.1 * mixColour, textureColour, 0.6);
   vec3 lightTimesTexture = lightColour * textureColour;
   vec3 ambient = textureColour;
   vec3 lightDir = normalize(sunDirection);
@@ -347,22 +347,22 @@ void main(){
       side: THREE.DoubleSide,
       uniforms: {
         alphaMap: { value: alphaMap },
-        ambientStrength: { value: 0.7 },
+        ambientStrength: { value: 0.5 },
         cameraPosition: { value: new THREE.Vector3(0, 0, 0) },
         delta: { value: 1 },
-        diffuseStrength: { value: 1.5 },
+        diffuseStrength: { value: 1.1 },
         lightColour: { value: new THREE.Vector3(1, 1, 1) },
         map: { value: grassTexture },
         noiseTexture: { value: noiseTexture },
         posX: { value: 0 },
         posZ: { value: 0 },
         radius: { value: 240 },
-        shininess: { value: 256 },
+        shininess: { value: 64 },
         specularColour: { value: new THREE.Vector3(1, 1, 1) },
-        specularStrength: { value: 0.5 },
+        specularStrength: { value: 0.2 },
         sunDirection: { value: new THREE.Vector3(0.5, 0.5, 0.2) },
         time: { value: 0 },
-        translucencyStrength: { value: 1.5 },
+        translucencyStrength: { value: 0.6 },
         width: { value: width },
       },
       vertexShader: grassVertexSource,

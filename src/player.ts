@@ -53,7 +53,11 @@ export class Player {
     // Create a simple view-model (hands) and attach to the player/camera
     this.viewModel = new THREE.Group();
     const handGeom = new THREE.SphereGeometry(0.18, 16, 12);
-    const handMat = new THREE.MeshPhongMaterial({ color: '#ffdbac' });
+    const handMat = new THREE.MeshStandardMaterial({
+      color: '#ffdbac',
+      metalness: 0,
+      roughness: 0.8,
+    });
     const leftHand = new THREE.Mesh(handGeom, handMat);
     const rightHand = new THREE.Mesh(handGeom, handMat);
     leftHand.scale.set(1, 1.3, 0.85);

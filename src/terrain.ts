@@ -37,7 +37,7 @@ export class Terrain extends THREE.Group {
   private skyController: SkyController;
   private treePoolSize = 8;
   private baseTrees: THREE.Object3D[] = [];
-  private treeNoiseScale = 0.0025;
+  private treeNoiseScale = 0.025;
   private treeNoiseOctaves = 3;
   private treeNoisePersistence = 0.55;
   private maxTreesPerChunk = 16;
@@ -285,8 +285,8 @@ export class Terrain extends THREE.Group {
     const pos = geometry.attributes.position.array as Float32Array;
     const vertCount = pos.length / 3;
     const colors = new Float32Array(vertCount * 3);
-    const sand = new THREE.Color('#e2c28d');
-    const grassColor = new THREE.Color('#66680c');
+    const sand = new THREE.Color('#d8c29a');
+    const grassColor = new THREE.Color('#53692b');
     const cutoff = this.waterLevel + 8;
     // World units for transition width
     const fuzz = 6;
@@ -347,10 +347,13 @@ export class Terrain extends THREE.Group {
     noiseTex.magFilter = THREE.LinearFilter;
     noiseTex.repeat.set(8, 8);
     noiseTex.needsUpdate = true;
-    const material = new THREE.MeshPhongMaterial({
+    const material = new THREE.MeshStandardMaterial({
       bumpMap: noiseTex,
-      bumpScale: 1.5,
+      bumpScale: 4,
       color: new THREE.Color('#ffffff'),
+      envMapIntensity: 0.6,
+      metalness: 0,
+      roughness: 0.9,
       vertexColors: true,
     });
     const mesh = new THREE.Mesh(geometry, material);
