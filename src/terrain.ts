@@ -151,6 +151,12 @@ export class Terrain extends THREE.Mesh {
     const imageData = image.data;
 
     const imageLength = imageData.length;
+    // Define grass color stops: low (dirt), mid (dark green), high (light green)
+    const lowColor = [80, 58, 22];
+    const midColor = [48, 115, 35];
+    const highColor = [160, 200, 120];
+    // Use Terrain.lerpNumbers helper below
+
     for (
       let byte = 0, pixIndex = 0;
       byte < imageLength;
@@ -163,11 +169,40 @@ export class Terrain extends THREE.Mesh {
       vector3.normalize();
 
       const shade = vector3.dot(sun);
+      const heightValue = Math.max(0, Math.min(1, data[pixIndex] || 0));
 
-      const base = 0.5 + (data[pixIndex] || 0) * 0.007;
-      imageData[byte] = Math.min(255, (30 + shade * 60) * base);
-      imageData[byte + 1] = Math.min(255, (30 + shade * 400) * base);
-      imageData[byte + 2] = Math.min(255, (30 + shade * 60) * base);
+      // Blend between low->mid->high based on height
+      let baseB: number, baseG: number, baseR: number;
+      if (heightValue < 0.5) {
+        const weight = heightValue * 2;
+        baseR = Terrain.lerpNumbers(lowColor[0], midColor[0], weight);
+        baseG = Terrain.lerpNumbers(lowColor[1], midColor[1], weight);
+        baseB = Terrain.lerpNumbers(lowColor[2], midColor[2], weight);
+      } else {
+        const weight = (heightValue - 0.5) * 2;
+        baseR = Terrain.lerpNumbers(midColor[0], highColor[0], weight);
+        baseG = Terrain.lerpNumbers(midColor[1], highColor[1], weight);
+        baseB = Terrain.lerpNumbers(midColor[2], highColor[2], weight);
+      }
+
+      // Lighting factor from slope-based shade
+      const lightFactor = Math.max(0.45, 0.7 + shade * 0.45);
+
+      // Small per-pixel variation to simulate grass patches
+      const variation = (Math.random() - 0.5) * 18;
+
+      imageData[byte] = Math.min(
+        255,
+        Math.max(0, baseR * lightFactor + variation),
+      );
+      imageData[byte + 1] = Math.min(
+        255,
+        Math.max(0, baseG * lightFactor + variation),
+      );
+      imageData[byte + 2] = Math.min(
+        255,
+        Math.max(0, baseB * lightFactor + variation),
+      );
     }
 
     context.putImageData(image, 0, 0);
@@ -205,6 +240,14 @@ export class Terrain extends THREE.Mesh {
       Math.min(1, (value - edgeLo) / (edgeHi - edgeLo || 1)),
     );
     return tval * tval * (3 - 2 * tval);
+  }
+
+  private static lerpNumbers(
+    fromValue: number,
+    toValue: number,
+    weight: number,
+  ) {
+    return fromValue + (toValue - fromValue) * weight;
   }
 
   public getHeightAt(x: number, z: number) {
