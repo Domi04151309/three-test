@@ -41,7 +41,7 @@ const player = new Player(camera, document.body, {
   ground: terrain.getHeightAt.bind(terrain),
   height: 1.8,
   jumpVelocity: 2,
-  speed: 2000,
+  speed: 200,
 });
 // Place player above terrain at start
 player.object.position.set(0, terrain.getHeightAt(0, 0) + 1.8, 0);

@@ -6,7 +6,7 @@ export type PlayerOptions = {
   gravity: number;
   jumpVelocity: number;
   height: number;
-  ground?: (x: number, z: number) => number;
+  ground: (x: number, z: number) => number;
 };
 
 export class Player {
@@ -23,11 +23,13 @@ export class Player {
   private moveLeft = false;
   private moveRight = false;
   private canJump = false;
+  private isSprinting = false;
   private readonly speed: number;
   private readonly gravity: number;
   private readonly jumpVelocity: number;
   private readonly height: number;
-  private readonly groundFn?: (x: number, z: number) => number;
+  private readonly groundFn: (x: number, z: number) => number;
+  private readonly sprintMultiplier = 10;
   private readonly bobFreq = 8;
   private readonly bobAmpY = 0.03;
   private readonly bobAmpX = 0.02;
@@ -114,9 +116,14 @@ export class Player {
         break;
       case 'Space':
         if (down && this.canJump) {
-          this.velocity.y += this.jumpVelocity;
+          this.velocity.y +=
+            this.jumpVelocity * (this.isSprinting ? this.sprintMultiplier : 1);
           this.canJump = false;
         }
+        break;
+      case 'ShiftLeft':
+      case 'ShiftRight':
+        this.isSprinting = down;
         break;
       default:
         break;
@@ -142,10 +149,12 @@ export class Player {
     this.direction.x = Number(this.moveRight) - Number(this.moveLeft);
     this.direction.normalize();
 
+    const moveSpeed =
+      this.speed * (this.isSprinting ? this.sprintMultiplier : 1);
     if (this.moveForward || this.moveBackward)
-      this.velocity.z -= this.direction.z * this.speed * delta;
+      this.velocity.z -= this.direction.z * moveSpeed * delta;
     if (this.moveLeft || this.moveRight)
-      this.velocity.x -= this.direction.x * this.speed * delta;
+      this.velocity.x -= this.direction.x * moveSpeed * delta;
 
     // Move controls
     this.controls.moveRight(-this.velocity.x * delta);
@@ -154,9 +163,10 @@ export class Player {
     // Apply vertical motion
     this.object.position.y += this.velocity.y * delta;
 
-    const groundY = this.groundFn
-      ? this.groundFn(this.object.position.x, this.object.position.z)
-      : 0;
+    const groundY = this.groundFn(
+      this.object.position.x,
+      this.object.position.z,
+    );
 
     if (this.object.position.y < groundY + this.height) {
       this.velocity.y = 0;
