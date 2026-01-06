@@ -1,8 +1,12 @@
 import * as THREE from 'three';
 import { Player } from './player';
 import { SkyController } from './sky';
+import Stats from 'three/addons/libs/stats.module.js';
 
 const container = document.getElementById('app') as HTMLDivElement;
+
+const stats = new Stats();
+container.append(stats.dom);
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(
@@ -69,4 +73,5 @@ renderer.setAnimationLoop(() => {
   player.update(delta);
   skyController.update(camera);
   renderer.render(scene, camera);
+  stats.update();
 });
