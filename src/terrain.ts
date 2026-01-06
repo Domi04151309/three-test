@@ -97,55 +97,63 @@ export class Terrain extends THREE.Group {
     const edge0 = this.flatThreshold - this.flatBlend;
     const edge1 = this.flatThreshold + this.flatBlend;
 
-    for (let index = 0; index < size; index++) {
-      const x = offsetX + (index % width);
-      const y = offsetZ + Math.floor(index / width);
+    // Use nested loops (faster than modulo/floor per-iteration) and avoid
+    // Sampling detail noise when the hill mask is zero to reduce noise calls.
+    let sampleIndex = 0;
+    for (let dz = 0; dz < depth; dz += 1) {
+      const y = offsetZ + dz;
+      for (let dx = 0; dx < width; dx += 1) {
+        const x = offsetX + dx;
 
-      const hRaw = this.noiseGenerator.sampleOctaves(x, y, {
-        lacunarity: this.lacunarity,
-        octaves: this.hillOctaves,
-        offsetZ: this.seed,
-        persistence: this.hillPersistence,
-        scale: this.hillNoiseScale,
-      });
+        const hRaw = this.noiseGenerator.sampleOctaves(x, y, {
+          lacunarity: this.lacunarity,
+          octaves: this.hillOctaves,
+          offsetZ: this.seed,
+          persistence: this.hillPersistence,
+          scale: this.hillNoiseScale,
+        });
 
-      const dRaw = this.noiseGenerator.sampleOctaves(x, y, {
-        lacunarity: this.lacunarity,
-        octaves: this.detailOctaves,
-        offsetZ: this.seed + 512,
-        persistence: this.detailPersistence,
-        scale: this.detailNoiseScale,
-      });
+        const hillNorm = (hRaw - nr.hillMin) / hillRange;
 
-      const hillNorm = (hRaw - nr.hillMin) / hillRange;
-      const detailNorm = (dRaw - nr.detailMin) / detailRange;
+        // Only sample detail noise when hill mask > 0 to save work.
+        const mask = Terrain.smoothStep(hillNorm, edge0, edge1);
+        let detailNorm = 0;
+        if (mask > 0) {
+          const dRaw = this.noiseGenerator.sampleOctaves(x, y, {
+            lacunarity: this.lacunarity,
+            octaves: this.detailOctaves,
+            offsetZ: this.seed + 512,
+            persistence: this.detailPersistence,
+            scale: this.detailNoiseScale,
+          });
+          detailNorm = (dRaw - nr.detailMin) / detailRange;
+        }
 
-      const mask = Terrain.smoothStep(hillNorm, edge0, edge1);
-      const combined =
-        hillNorm * this.hillAmplitude +
-        detailNorm * this.detailAmplitude * mask;
-      const clamped = Math.max(0, combined);
-      out[index] = clamped ** this.elevationExponent;
+        const combined =
+          hillNorm * this.hillAmplitude +
+          detailNorm * this.detailAmplitude * mask;
+        const clamped = Math.max(0, combined);
+        out[sampleIndex] = clamped ** this.elevationExponent;
+        sampleIndex += 1;
+      }
     }
 
     return out;
   }
 
   private sampleCellHeight(ix: number, iz: number) {
-    for (const chunkItem of this.chunks.values())
-      if (
-        ix >= chunkItem.offsetX &&
-        ix < chunkItem.offsetX + chunkItem.width &&
-        iz >= chunkItem.offsetZ &&
-        iz < chunkItem.offsetZ + chunkItem.depth
-      ) {
-        const lx = ix - chunkItem.offsetX;
-        const lz = iz - chunkItem.offsetZ;
-        const index = lx + lz * chunkItem.width;
-        return chunkItem.heightData[index] || 0;
-      }
-
-    return 0;
+    // Compute the chunk coordinates directly and perform a keyed lookup
+    const cx = Math.floor(ix / this.chunkSize);
+    const cz = Math.floor(iz / this.chunkSize);
+    const key = Terrain.makeKey(cx, cz);
+    const chunkItem = this.chunks.get(key);
+    if (!chunkItem) return 0;
+    const lx = ix - chunkItem.offsetX;
+    const lz = iz - chunkItem.offsetZ;
+    if (lx < 0 || lz < 0 || lx >= chunkItem.width || lz >= chunkItem.depth)
+      return 0;
+    const index = lx + lz * chunkItem.width;
+    return chunkItem.heightData[index] || 0;
   }
 
   private static makeKey(cx: number, cz: number) {
@@ -272,8 +280,8 @@ export class Terrain extends THREE.Group {
       fog: false,
       sunColor: new THREE.Color('white'),
       sunDirection: new THREE.Vector3(),
-      textureHeight: 1024,
-      textureWidth: 1024,
+      textureHeight: 512,
+      textureWidth: 512,
       waterColor: new THREE.Color('#001e0f'),
       waterNormals: this.waterNormals,
     });
@@ -376,34 +384,36 @@ export class Terrain extends THREE.Group {
     let hillMax = -Infinity;
     let detailMin = Infinity;
     let detailMax = -Infinity;
-    const size = width * depth;
     const startX = -Math.floor(width / 2);
     const startY = -Math.floor(depth / 2);
 
-    for (let index = 0; index < size; index += 1) {
-      const x = startX + (index % width);
-      const y = startY + Math.floor(index / width);
+    // Use nested loops to avoid per-iteration modulo and floor operations.
+    for (let dz = 0; dz < depth; dz += 1) {
+      const y = startY + dz;
+      for (let dx = 0; dx < width; dx += 1) {
+        const x = startX + dx;
 
-      const hValue = this.noiseGenerator.sampleOctaves(x, y, {
-        lacunarity: this.lacunarity,
-        octaves: this.hillOctaves,
-        offsetZ: this.seed,
-        persistence: this.hillPersistence,
-        scale: this.hillNoiseScale,
-      });
+        const hValue = this.noiseGenerator.sampleOctaves(x, y, {
+          lacunarity: this.lacunarity,
+          octaves: this.hillOctaves,
+          offsetZ: this.seed,
+          persistence: this.hillPersistence,
+          scale: this.hillNoiseScale,
+        });
 
-      const dValue = this.noiseGenerator.sampleOctaves(x, y, {
-        lacunarity: this.lacunarity,
-        octaves: this.detailOctaves,
-        offsetZ: this.seed + 512,
-        persistence: this.detailPersistence,
-        scale: this.detailNoiseScale,
-      });
+        const dValue = this.noiseGenerator.sampleOctaves(x, y, {
+          lacunarity: this.lacunarity,
+          octaves: this.detailOctaves,
+          offsetZ: this.seed + 512,
+          persistence: this.detailPersistence,
+          scale: this.detailNoiseScale,
+        });
 
-      if (hValue < hillMin) hillMin = hValue;
-      if (hValue > hillMax) hillMax = hValue;
-      if (dValue < detailMin) detailMin = dValue;
-      if (dValue > detailMax) detailMax = dValue;
+        if (hValue < hillMin) hillMin = hValue;
+        if (hValue > hillMax) hillMax = hValue;
+        if (dValue < detailMin) detailMin = dValue;
+        if (dValue > detailMax) detailMax = dValue;
+      }
     }
 
     return { detailMax, detailMin, hillMax, hillMin };
