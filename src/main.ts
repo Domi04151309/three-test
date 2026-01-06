@@ -67,5 +67,6 @@ renderer.setAnimationLoop(() => {
   cube.rotation.x += 0.01;
   cube.rotation.y += 0.013;
   player.update(delta);
+  skyController.update(camera);
   renderer.render(scene, camera);
 });
