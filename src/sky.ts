@@ -9,6 +9,10 @@ import { Water } from 'three/examples/jsm/objects/Water';
 
 export class SkyController extends THREE.Group {
   public sun: THREE.Vector3;
+  // Fog settings (propagated from scene)
+  public fogColor: THREE.Color;
+  public fogNear: number;
+  public fogFar: number;
   private sky: Sky;
   private sunLight: THREE.DirectionalLight;
   private ambient: THREE.AmbientLight;
@@ -28,6 +32,10 @@ export class SkyController extends THREE.Group {
 
   constructor() {
     super();
+    // Sensible defaults — main.ts may overwrite these to match scene.fog
+    this.fogColor = new THREE.Color('#7fb7d9');
+    this.fogNear = 80;
+    this.fogFar = 480;
     this.sky = new Sky();
     this.sky.scale.setScalar(450_000);
     this.add(this.sky);
@@ -132,7 +140,7 @@ export class SkyController extends THREE.Group {
     const waterGeom = new THREE.PlaneGeometry(200_000, 200_000);
     const water = new Water(waterGeom, {
       distortionScale: 3.7,
-      fog: false,
+      fog: true,
       sunColor: new THREE.Color('white'),
       sunDirection: new THREE.Vector3(),
       textureHeight: 256,
