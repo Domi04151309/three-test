@@ -3,6 +3,7 @@ import {
   Lensflare,
   LensflareElement,
 } from 'three/examples/jsm/objects/Lensflare';
+import { CloudVolume } from './cloud';
 import { Sky } from 'three/examples/jsm/objects/Sky';
 
 export class SkyController extends THREE.Group {
@@ -10,7 +11,8 @@ export class SkyController extends THREE.Group {
   private sun: THREE.Vector3;
   private sunLight: THREE.DirectionalLight;
   private ambient: THREE.AmbientLight;
-  private lensflareLight: THREE.PointLight | null = null;
+  private lensflareLight: THREE.PointLight;
+  private clouds: CloudVolume[];
   private readonly azimuth: number = 180;
   private readonly elevation: number = 170;
   private readonly color: string = '#ffffff';
@@ -98,11 +100,19 @@ export class SkyController extends THREE.Group {
     lensflare.addElement(new LensflareElement(tex3, 220, 0.85));
     lensflare.addElement(new LensflareElement(tex3, 130, 1));
     point.add(lensflare);
+
+    // Clouds
+    this.clouds = Array.from(
+      { length: 5 },
+      (_, index) =>
+        new CloudVolume((index / 5) * Math.PI * 2, 600 * Math.random()),
+    );
+    this.add(...this.clouds);
   }
 
   // Call this every frame to update visibility/intensity based on camera view
   public update(camera: THREE.Camera): void {
-    if (!this.lensflareLight) return;
+    // Lens flare
     const camDirection = new THREE.Vector3();
     camera.getWorldDirection(camDirection).normalize();
 
@@ -123,5 +133,8 @@ export class SkyController extends THREE.Group {
       visibilityFactor ** 0.75,
     );
     this.lensflareLight.visible = visibilityFactor > 0.001;
+
+    // Clouds
+    for (const cloud of this.clouds) cloud.update(camera);
   }
 }

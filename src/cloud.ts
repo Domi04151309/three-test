@@ -6,11 +6,9 @@ function getRandomArbitrary(min: number, max: number): number {
 }
 
 export class CloudVolume extends THREE.Mesh {
-  private static readonly minSize: number = 50;
-  private static readonly maxSize: number = 200;
   private static readonly color: string = '#fff';
 
-  constructor(...position: [number, number, number]) {
+  constructor(angle: number, radius: number) {
     const perlin = new ImprovedNoise();
 
     const size = 64;
@@ -147,10 +145,10 @@ export class CloudVolume extends THREE.Mesh {
         cameraPos: { value: new THREE.Vector3() },
         frame: { value: 0 },
         map: { value: texture },
-        opacity: { value: 0.5 },
-        range: { value: 0.25 },
+        opacity: { value: 0.1 },
+        range: { value: 0.1 },
         steps: { value: 10 },
-        threshold: { value: 0.4 },
+        threshold: { value: getRandomArbitrary(0.2, 0.4) },
       },
       vertexShader,
     });
@@ -158,17 +156,20 @@ export class CloudVolume extends THREE.Mesh {
     const geometry = new THREE.BoxGeometry(1, 1, 1);
     super(geometry, material);
     this.scale.set(
-      getRandomArbitrary(CloudVolume.minSize, CloudVolume.maxSize),
-      getRandomArbitrary(CloudVolume.minSize, CloudVolume.maxSize),
-      getRandomArbitrary(CloudVolume.minSize, CloudVolume.maxSize),
+      getRandomArbitrary(100, 300),
+      getRandomArbitrary(16, 48),
+      getRandomArbitrary(100, 260),
     );
-    this.position.set(...position);
+    this.position.set(
+      Math.cos(angle) * radius,
+      getRandomArbitrary(80, 220),
+      Math.sin(angle) * radius,
+    );
   }
 
   public update(camera: THREE.Camera): void {
     const mat = this.material as THREE.RawShaderMaterial;
     mat.uniforms.cameraPos.value.copy(camera.position);
-    // Increment frame safely.
     mat.uniforms.frame.value = (mat.uniforms.frame.value as number) + 1;
   }
 }
