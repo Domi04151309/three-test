@@ -265,13 +265,80 @@ export class Terrain extends THREE.Group {
       | undefined;
     if (normalAttribute) normalAttribute.needsUpdate = true;
 
+    // Color vertices: blend sand and grass using noise to fuzz the border
+    const pos = geometry.attributes.position.array as Float32Array;
+    const vertCount = pos.length / 3;
+    const colors = new Float32Array(vertCount * 3);
+    const sand = new THREE.Color('#e2c28d');
+    const grassColor = new THREE.Color('#66680c');
+    const cutoff = this.waterLevel + 8;
+    // World units for transition width
+    const fuzz = 6;
+    const fuzzHalf = fuzz * 0.5;
+    // How much noise perturbs the cutoff (world units)
+    const noiseAmp = 4;
+    const noiseOptions = {
+      lacunarity: 2,
+      octaves: 3,
+      offsetZ: this.seed + 1024,
+      persistence: 0.5,
+      scale: 0.02,
+    };
+    // Compute chunk center in world coords for vertex -> world mapping
+    const centerX = (offsetX + (cw - 1) / 2) * this.cellSize;
+    const centerZ = (offsetZ + (cd - 1) / 2) * this.cellSize;
+    const temporaryColor = new THREE.Color();
+    for (let vi = 0; vi < vertCount; vi += 1) {
+      const y = pos[vi * 3 + 1];
+      const localX = pos[vi * 3 + 0];
+      const localZ = pos[vi * 3 + 2];
+      const worldX = centerX + localX;
+      const worldZ = centerZ + localZ;
+      const sx = worldX / this.cellSize;
+      const sz = worldZ / this.cellSize;
+      const noiseValue = this.noiseGenerator.sampleOctaves(
+        sx,
+        sz,
+        noiseOptions,
+      );
+      const localCutoff = cutoff + noiseValue * noiseAmp;
+      const blend = Terrain.smoothStep(
+        y,
+        localCutoff - fuzzHalf,
+        localCutoff + fuzzHalf,
+      );
+      temporaryColor.lerpColors(sand, grassColor, blend);
+      colors[vi * 3] = temporaryColor.r;
+      colors[vi * 3 + 1] = temporaryColor.g;
+      colors[vi * 3 + 2] = temporaryColor.b;
+    }
+    geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3, false));
+
+    // Generate a small random noise texture and use it as the bump map
+    const noiseSize = 256;
+    const noiseData = new Uint8Array(noiseSize * noiseSize);
+    for (let index = 0; index < noiseData.length; index++)
+      noiseData[index] = Math.floor(Math.random() * 256);
+    const noiseTex = new THREE.DataTexture(
+      noiseData,
+      noiseSize,
+      noiseSize,
+      THREE.RedFormat,
+    );
+    noiseTex.wrapS = THREE.RepeatWrapping;
+    noiseTex.wrapT = THREE.RepeatWrapping;
+    noiseTex.minFilter = THREE.LinearFilter;
+    noiseTex.magFilter = THREE.LinearFilter;
+    noiseTex.repeat.set(8, 8);
+    noiseTex.needsUpdate = true;
     const material = new THREE.MeshPhongMaterial({
-      color: new THREE.Color('#1ab005'),
+      bumpMap: noiseTex,
+      bumpScale: 1.5,
+      color: new THREE.Color('#ffffff'),
+      vertexColors: true,
     });
     const mesh = new THREE.Mesh(geometry, material);
 
-    const centerX = (offsetX + (cw - 1) / 2) * this.cellSize;
-    const centerZ = (offsetZ + (cd - 1) / 2) * this.cellSize;
     mesh.position.set(centerX, 0, centerZ);
 
     const sampleFromHeightData = (x: number, z: number) => {

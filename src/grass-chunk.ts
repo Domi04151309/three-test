@@ -1,6 +1,13 @@
 import * as THREE from 'three';
 import type { SkyController } from './sky';
 
+function smoothStep(value: number, edge0: number, edge1: number) {
+  let tv = (value - edge0) / (edge1 - edge0 || 1);
+  if (tv < 0) tv = 0;
+  if (tv > 1) tv = 1;
+  return tv * tv * (3 - 2 * tv);
+}
+
 // Port of the provided grass implementation adapted for the project's chunk API.
 export class GrassChunk {
   public mesh: THREE.Mesh;
@@ -98,19 +105,42 @@ export class GrassChunk {
     const halfRootAngles: number[] = [];
 
     let placedCount = 0;
-    for (let index = 0; index < instances; index++) {
-      indices.push(index / instances);
+    // Fuzz settings for lower boundary
+    const cutoff = waterLevel + 12;
+    const fuzz = 12;
+    const fuzzHalf = fuzz * 0.5;
+    const instancesLocal = instances;
+    // Use top-level smoothStep helper defined above
+
+    for (let index = 0; index < instancesLocal; index++) {
+      indices.push(index / instancesLocal);
       const x = Math.random() * width - width / 2;
       const z = Math.random() * width - width / 2;
       const y = sampleHeight(centerX + x, centerZ + z);
-      // Skip underwater blades
-      if (y <= waterLevel + 0.5) {
+
+      // Use helper smoothStep declared above
+
+      // Deterministic position-based pseudo-noise in [0,1)
+      const posNoise = (() => {
+        const ax = centerX + x;
+        const bz = centerZ + z;
+        const noiseSeed = Math.sin(ax * 12.9898 + bz * 78.233) * 43_758;
+        return noiseSeed - Math.floor(noiseSeed);
+      })();
+
+      // Compute placement probability using smooth transition around cutoff
+      const placementProb = smoothStep(y, cutoff - fuzzHalf, cutoff + fuzzHalf);
+      // Blend with noise to make the border fuzzy
+      const place = posNoise < placementProb;
+
+      if (!place) {
         // Push a dummy off-screen element to keep arrays aligned
         offsets.push(0, -10_000, 0);
         scales.push(0);
         halfRootAngles.push(0, 1);
         continue;
       }
+
       offsets.push(x, y, z);
       placedCount++;
       const angleRoot = Math.PI - Math.random() * (2 * Math.PI);
