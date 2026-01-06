@@ -12,7 +12,7 @@ export class SkyController extends THREE.Group {
   private ambient: THREE.AmbientLight;
   private lensflareLight: THREE.PointLight | null = null;
   private readonly azimuth: number = 180;
-  private readonly elevation: number = 135;
+  private readonly elevation: number = 170;
   private readonly color: string = '#ffffff';
 
   constructor() {

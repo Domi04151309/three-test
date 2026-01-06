@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { CloudVolume } from './clouds';
 import { Player } from './player';
 import { SkyController } from './sky';
 import Stats from 'three/addons/libs/stats.module.js';
@@ -41,6 +42,9 @@ scene.add(ground);
 const skyController = new SkyController();
 scene.add(skyController);
 
+const clouds = new CloudVolume(100, 120, 0);
+scene.add(clouds);
+
 // Grid helper
 const grid = new THREE.GridHelper(1000, 1000, '#888888', '#444444');
 scene.add(grid);
@@ -72,6 +76,7 @@ renderer.setAnimationLoop(() => {
   cube.rotation.y += 0.013;
   player.update(delta);
   skyController.update(camera);
+  clouds.update(camera);
   renderer.render(scene, camera);
   stats.update();
 });
