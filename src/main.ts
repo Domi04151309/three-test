@@ -61,7 +61,7 @@ renderer.setAnimationLoop(() => {
   skyController.update(camera);
   player.update(delta);
   terrain.updatePlayerPosition(player.object.position);
-  terrain.update(delta);
+  terrain.update(camera, delta);
   renderer.render(scene, camera);
   stats.update();
 });

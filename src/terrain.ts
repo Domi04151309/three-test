@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { CloudVolume } from './cloud';
 import { NoiseGenerator } from './noise';
 import { SkyController } from './sky';
 import { Water } from 'three/examples/jsm/objects/Water';
@@ -10,7 +11,8 @@ interface ChunkEntry {
   depth: number;
   offsetX: number;
   offsetZ: number;
-  water?: Water;
+  water: Water;
+  clouds: CloudVolume[];
 }
 
 export class Terrain extends THREE.Group {
@@ -226,8 +228,25 @@ export class Terrain extends THREE.Group {
       .copy(this.skyController.sun)
       .normalize();
     this.add(water);
+    // Create some chunk-local clouds
+    const rand = (min: number, max: number) =>
+      Math.random() * (max - min) + min;
+    const clouds = Array.from(
+      { length: 2 },
+      () =>
+        new CloudVolume(
+          new THREE.Vector3(
+            centerX + rand(-chunkPlaneWidth * 0.25, chunkPlaneWidth * 0.25),
+            rand(320, 460),
+            centerZ + rand(-chunkPlaneDepth * 0.25, chunkPlaneDepth * 0.25),
+          ),
+        ),
+    );
+    this.add(...clouds);
+
     const key = Terrain.makeKey(cx, cz);
     this.chunks.set(key, {
+      clouds,
       depth: cd,
       heightData,
       mesh,
@@ -272,18 +291,23 @@ export class Terrain extends THREE.Group {
     const entry = this.chunks.get(key);
     if (!entry) return;
     this.remove(entry.mesh);
-    if (entry.water) {
-      this.remove(entry.water);
-      try {
-        entry.water.geometry.dispose();
-      } catch (error) {
-        console.warn('Terrain: failed disposing water geometry', error);
-      }
-      try {
-        entry.water.material.dispose();
-      } catch (error) {
-        console.warn('Terrain: failed disposing water material', error);
-      }
+    this.remove(entry.water);
+    entry.water.geometry.dispose();
+    entry.water.material.dispose();
+    for (const cloud of entry.clouds) {
+      this.remove(cloud);
+      cloud.geometry.dispose();
+
+      const mat = cloud.material as THREE.RawShaderMaterial | undefined;
+      if (!mat) continue;
+
+      const mapValue = (
+        mat.uniforms as { map?: { value?: { dispose?: () => void } } }
+      ).map?.value;
+      if (mapValue && typeof mapValue.dispose === 'function')
+        mapValue.dispose();
+
+      mat.dispose();
     }
     const geom = entry.mesh.geometry;
     const mat = entry.mesh.material;
@@ -500,16 +524,18 @@ export class Terrain extends THREE.Group {
     return h1 * (1 - tz) + h2 * tz;
   }
 
-  update(delta: number): void {
+  update(camera: THREE.Camera, delta: number): void {
     // Update time and sun direction for all chunk waters
+    for (const ch of this.chunks.values()) {
+      const uniforms = ch.water.material.uniforms as {
+        time: THREE.IUniform<number>;
+        sunDirection: THREE.IUniform<THREE.Vector3>;
+      };
+      uniforms.time.value += delta;
+      uniforms.sunDirection.value.copy(this.skyController.sun).normalize();
+    }
+    // Update chunk-local clouds
     for (const ch of this.chunks.values())
-      if (ch.water) {
-        const uniforms = ch.water.material.uniforms as {
-          time: THREE.IUniform<number>;
-          sunDirection: THREE.IUniform<THREE.Vector3>;
-        };
-        uniforms.time.value += delta;
-        uniforms.sunDirection.value.copy(this.skyController.sun).normalize();
-      }
+      for (const cloud of ch.clouds) cloud.update(camera);
   }
 }

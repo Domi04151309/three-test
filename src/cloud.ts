@@ -8,7 +8,7 @@ function getRandomArbitrary(min: number, max: number): number {
 export class CloudVolume extends THREE.Mesh {
   private static readonly color: string = '#fff';
 
-  constructor(angle: number, radius: number) {
+  constructor(position: THREE.Vector3) {
     const perlin = new ImprovedNoise();
 
     const size = 64;
@@ -160,11 +160,8 @@ export class CloudVolume extends THREE.Mesh {
       getRandomArbitrary(16, 48),
       getRandomArbitrary(100, 260),
     );
-    this.position.set(
-      Math.cos(angle) * radius,
-      getRandomArbitrary(220, 360),
-      Math.sin(angle) * radius,
-    );
+
+    this.position.copy(position);
   }
 
   public update(camera: THREE.Camera): void {
