@@ -59,8 +59,9 @@ window.addEventListener('resize', onWindowResize, false);
 renderer.setAnimationLoop(() => {
   const delta = clock.getDelta();
   skyController.update(camera);
-  terrain.update(delta);
   player.update(delta);
+  terrain.updatePlayerPosition(player.object.position);
+  terrain.update(delta);
   renderer.render(scene, camera);
   stats.update();
 });

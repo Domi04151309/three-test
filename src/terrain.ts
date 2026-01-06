@@ -23,14 +23,20 @@ export class Terrain extends THREE.Group {
   private detailAmplitude = 0.9;
   private flatThreshold = 0.35;
   private flatBlend = 0.12;
-  private chunks: Array<{
-    mesh: THREE.Mesh;
-    heightData: Float32Array;
-    width: number;
-    depth: number;
-    offsetX: number;
-    offsetZ: number;
-  }> = [];
+  private cellSize = 0;
+  private lastChunkX?: number;
+  private lastChunkZ?: number;
+  private chunks: Map<
+    string,
+    {
+      mesh: THREE.Mesh;
+      heightData: Float32Array;
+      width: number;
+      depth: number;
+      offsetX: number;
+      offsetZ: number;
+    }
+  > = new Map();
   private noiseRanges?: {
     hillMin: number;
     hillMax: number;
@@ -46,65 +52,15 @@ export class Terrain extends THREE.Group {
       this.worldWidth,
       this.worldDepth,
     );
-    const cellSize = this.planeSize / (this.worldWidth - 1);
-    const chunksX = Math.ceil(this.worldWidth / this.chunkSize);
-    const chunksZ = Math.ceil(this.worldDepth / this.chunkSize);
+    this.cellSize = this.planeSize / (this.worldWidth - 1);
 
-    const totalChunks = chunksX * chunksZ;
-    for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex += 1) {
-      const chunkX = chunkIndex % chunksX;
-      const chunkZ = Math.floor(chunkIndex / chunksX);
-      const offsetX = chunkX * this.chunkSize;
-      const offsetZ = chunkZ * this.chunkSize;
-      const cw = Math.min(this.chunkSize + 1, this.worldWidth - offsetX);
-      const cd = Math.min(this.chunkSize + 1, this.worldDepth - offsetZ);
-
-      const heightData = this.generateHeight(cw, cd, offsetX, offsetZ);
-
-      const chunkPlaneWidth = (cw - 1) * cellSize;
-      const chunkPlaneDepth = (cd - 1) * cellSize;
-
-      const geometry = new THREE.PlaneGeometry(
-        chunkPlaneWidth,
-        chunkPlaneDepth,
-        cw - 1,
-        cd - 1,
-      );
-      geometry.rotateX(-Math.PI / 2);
-
-      const vertices = geometry.attributes.position.array as Float32Array;
-      const vertLength = vertices.length;
-      let sampleIndex = 0;
-      for (let vertIndex = 0; vertIndex < vertLength; vertIndex += 3) {
-        vertices[vertIndex + 1] = heightData[sampleIndex] * this.heightScale;
-        sampleIndex += 1;
-      }
-
-      const texture = new THREE.CanvasTexture(
-        Terrain.generateTexture(heightData, cw, cd, this.textureScale),
-      );
-      texture.wrapS = THREE.ClampToEdgeWrapping;
-      texture.wrapT = THREE.ClampToEdgeWrapping;
-      texture.colorSpace = THREE.SRGBColorSpace;
-
-      const material = new THREE.MeshPhongMaterial({ map: texture });
-      const mesh = new THREE.Mesh(geometry, material);
-      mesh.receiveShadow = true;
-
-      const centerX = -this.planeSize / 2 + (offsetX + (cw - 1) / 2) * cellSize;
-      const centerZ = -this.planeSize / 2 + (offsetZ + (cd - 1) / 2) * cellSize;
-      mesh.position.set(centerX, 0, centerZ);
-
-      this.chunks.push({
-        depth: cd,
-        heightData,
-        mesh,
-        offsetX,
-        offsetZ,
-        width: cw,
-      });
-      this.add(mesh);
-    }
+    // Load an initial area around origin (player at 0,0)
+    this.updateChunks(0, 0, 2);
+    const half = this.planeSize / 2;
+    const gx0 = ((0 + half) / this.planeSize) * (this.worldWidth - 1);
+    const gz0 = ((0 + half) / this.planeSize) * (this.worldDepth - 1);
+    this.lastChunkX = Math.floor(gx0 / this.chunkSize);
+    this.lastChunkZ = Math.floor(gz0 / this.chunkSize);
 
     // Create water plane owned by the Terrain group
     const waterGeometry = new THREE.PlaneGeometry(
@@ -216,19 +172,21 @@ export class Terrain extends THREE.Group {
     for (let index = 0; index < size; index++) {
       const mask = Terrain.smoothStep(hill[index], edge0, edge1);
       // Combine: hills always present; details only where mask > 0
-      out[index] =
+      const combined =
         hill[index] * this.hillAmplitude +
         detail[index] * this.detailAmplitude * mask;
-      // Apply exponent to accentuate peaks
-      out[index] **= this.elevationExponent;
+      // Clamp to non-negative before applying fractional exponent to avoid NaN
+      const clamped = Math.max(0, combined);
+      out[index] = clamped ** this.elevationExponent;
     }
 
     return out;
   }
 
   private sampleCellHeight(ix: number, iz: number) {
-    for (let chunkIndex = 0; chunkIndex < this.chunks.length; chunkIndex++) {
-      const chunkItem = this.chunks[chunkIndex];
+    const chunkValues = [...this.chunks.values()];
+    for (let ci = 0; ci < chunkValues.length; ci += 1) {
+      const chunkItem = chunkValues[ci];
       if (
         ix >= chunkItem.offsetX &&
         ix < chunkItem.offsetX + chunkItem.width &&
@@ -242,6 +200,149 @@ export class Terrain extends THREE.Group {
       }
     }
     return 0;
+  }
+
+  private static makeKey(cx: number, cz: number) {
+    return [cx, cz].join(',');
+  }
+
+  private createChunk(cx: number, cz: number) {
+    const offsetX = cx * this.chunkSize;
+    const offsetZ = cz * this.chunkSize;
+    // Always generate full chunk grid; allow streaming beyond initial world bounds
+    const cw = this.chunkSize + 1;
+    const cd = this.chunkSize + 1;
+
+    const heightData = this.generateHeight(cw, cd, offsetX, offsetZ);
+
+    // Validate height data to avoid NaNs in geometry
+    for (let hi = 0; hi < heightData.length; hi += 1) {
+      const value = heightData[hi];
+      if (!Number.isFinite(value)) {
+        console.warn('Terrain: non-finite heightData at', cx, cz, hi, value);
+        heightData[hi] = 0;
+      } else if (value < 0) {
+        heightData[hi] = 0;
+      }
+    }
+
+    const chunkPlaneWidth = (cw - 1) * this.cellSize;
+    const chunkPlaneDepth = (cd - 1) * this.cellSize;
+
+    const geometry = new THREE.PlaneGeometry(
+      chunkPlaneWidth,
+      chunkPlaneDepth,
+      cw - 1,
+      cd - 1,
+    );
+    geometry.rotateX(-Math.PI / 2);
+
+    const vertices = geometry.attributes.position.array as Float32Array;
+    const vertLength = vertices.length;
+    let sampleIndex = 0;
+    for (let vertIndex = 0; vertIndex < vertLength; vertIndex += 3) {
+      vertices[vertIndex + 1] = heightData[sampleIndex] * this.heightScale;
+      sampleIndex += 1;
+    }
+
+    const texture = new THREE.CanvasTexture(
+      Terrain.generateTexture(heightData, cw, cd, this.textureScale),
+    );
+    texture.wrapS = THREE.ClampToEdgeWrapping;
+    texture.wrapT = THREE.ClampToEdgeWrapping;
+    texture.colorSpace = THREE.SRGBColorSpace;
+
+    const material = new THREE.MeshPhongMaterial({ map: texture });
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.receiveShadow = true;
+
+    const centerX =
+      -this.planeSize / 2 + (offsetX + (cw - 1) / 2) * this.cellSize;
+    const centerZ =
+      -this.planeSize / 2 + (offsetZ + (cd - 1) / 2) * this.cellSize;
+    mesh.position.set(centerX, 0, centerZ);
+
+    const key = Terrain.makeKey(cx, cz);
+    this.chunks.set(key, {
+      depth: cd,
+      heightData,
+      mesh,
+      offsetX,
+      offsetZ,
+      width: cw,
+    });
+    this.add(mesh);
+  }
+
+  private disposeChunk(cx: number, cz: number) {
+    const key = Terrain.makeKey(cx, cz);
+    const entry = this.chunks.get(key);
+    if (!entry) return;
+    this.remove(entry.mesh);
+    const geom = entry.mesh.geometry;
+    const mat = entry.mesh.material;
+    if (Array.isArray(mat)) {
+      for (let mi = 0; mi < mat.length; mi += 1) {
+        const matItem = mat[mi];
+        const maybeMap = (
+          matItem as unknown as { map?: { dispose: () => void } }
+        ).map;
+        if (maybeMap && typeof maybeMap.dispose === 'function')
+          maybeMap.dispose();
+        matItem.dispose();
+      }
+    } else {
+      const maybeMap = (mat as unknown as { map?: { dispose: () => void } })
+        .map;
+      if (maybeMap && typeof maybeMap.dispose === 'function')
+        maybeMap.dispose();
+      mat.dispose();
+    }
+    geom.dispose();
+    this.chunks.delete(key);
+  }
+
+  public updateChunks(playerX: number, playerZ: number, radius = 2) {
+    const half = this.planeSize / 2;
+    const gx = ((playerX + half) / this.planeSize) * (this.worldWidth - 1);
+    const gz = ((playerZ + half) / this.planeSize) * (this.worldDepth - 1);
+    const centerCX = Math.floor(gx / this.chunkSize);
+    const centerCZ = Math.floor(gz / this.chunkSize);
+
+    const wanted = new Set<string>();
+    const side = radius * 2 + 1;
+    const total = side * side;
+    for (let index = 0; index < total; index += 1) {
+      const dx = (index % side) - radius;
+      const dz = Math.floor(index / side) - radius;
+      const cx = centerCX + dx;
+      const cz = centerCZ + dz;
+      const key = Terrain.makeKey(cx, cz);
+      wanted.add(key);
+      if (!this.chunks.has(key)) this.createChunk(cx, cz);
+    }
+    // Dispose chunks not wanted
+    const keys = [...this.chunks.keys()];
+    for (let ki = 0; ki < keys.length; ki += 1) {
+      const key = keys[ki];
+      if (!wanted.has(key)) {
+        const [sx, sz] = key.split(',').map(Number);
+        this.disposeChunk(sx, sz);
+      }
+    }
+  }
+
+  public updatePlayerPosition(position: THREE.Vector3) {
+    const half = this.planeSize / 2;
+    const gx = ((position.x + half) / this.planeSize) * (this.worldWidth - 1);
+    const gz = ((position.z + half) / this.planeSize) * (this.worldDepth - 1);
+    const cx = Math.floor(gx / this.chunkSize);
+    const cz = Math.floor(gz / this.chunkSize);
+    if (this.lastChunkX !== cx || this.lastChunkZ !== cz) {
+      this.lastChunkX = cx;
+      this.lastChunkZ = cz;
+      this.updateChunks(position.x, position.z, 2);
+    }
   }
 
   private computeNoiseRanges(width: number, depth: number) {
@@ -394,13 +495,11 @@ export class Terrain extends THREE.Group {
     const iz = Math.floor(fz);
     const tx = fx - ix;
     const tz = fz - iz;
-
-    const clamp = (value: number, max: number) =>
-      Math.max(0, Math.min(value, max));
-    const ix1 = clamp(ix, this.worldWidth - 1);
-    const iz1 = clamp(iz, this.worldDepth - 1);
-    const ix2 = clamp(ix + 1, this.worldWidth - 1);
-    const iz2 = clamp(iz + 1, this.worldDepth - 1);
+    // Do not clamp indices; streaming supports chunks beyond original world bounds.
+    const ix1 = ix;
+    const iz1 = iz;
+    const ix2 = ix + 1;
+    const iz2 = iz + 1;
 
     const h11 = this.sampleCellHeight(ix1, iz1) * this.heightScale;
     const h21 = this.sampleCellHeight(ix2, iz1) * this.heightScale;
