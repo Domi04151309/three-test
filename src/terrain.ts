@@ -37,6 +37,12 @@ export class Terrain extends THREE.Group {
   private skyController: SkyController;
   private treePoolSize = 8;
   private baseTrees: THREE.Object3D[] = [];
+  private treeNoiseScale = 0.0025;
+  private treeNoiseOctaves = 3;
+  private treeNoisePersistence = 0.55;
+  private maxTreesPerChunk = 16;
+  private treeLowThreshold = 0.4;
+  private treeHighThreshold = 0.6;
 
   constructor(skyController: SkyController) {
     super();
@@ -389,27 +395,58 @@ export class Terrain extends THREE.Group {
       width: chunkPlaneWidth,
     });
 
-    // Create one random tree for this chunk using a pregenerated pool
+    // Use noise to determine how many trees this chunk gets (forests vs meadows)
     const objects: THREE.Object3D[] = [];
     if (this.baseTrees.length > 0) {
+      // Sample noise at chunk center to determine density (normalized 0..1)
+      const tx = centerX / this.cellSize;
+      const tz = centerZ / this.cellSize;
+      const treeNoiseOptions = {
+        lacunarity: this.lacunarity,
+        octaves: this.treeNoiseOctaves,
+        offsetZ: this.seed + 2048,
+        persistence: this.treeNoisePersistence,
+        scale: this.treeNoiseScale,
+      };
+      const tRaw = this.noiseGenerator.sampleOctaves(tx, tz, treeNoiseOptions);
+      // Compute amplitude sum for the given octaves/persistence to normalize
+      let amplitude = 1;
+      let amplitudeSum = 0;
+      for (let index = 0; index < this.treeNoiseOctaves; index += 1) {
+        amplitudeSum += amplitude;
+        amplitude *= this.treeNoisePersistence;
+      }
+      const densityNormalized = Math.max(
+        0,
+        Math.min(1, (tRaw / (amplitudeSum || 1) + 1) * 0.5),
+      );
+      // Compute a bimodal tree count: clear below lowThreshold, dense above highThreshold.
+      let treeCount: number;
+      if (densityNormalized <= this.treeLowThreshold) treeCount = 0;
+      else if (densityNormalized >= this.treeHighThreshold)
+        treeCount = Math.floor(this.maxTreesPerChunk);
+      else treeCount = 0;
+
       const margin = this.cellSize;
-      const rx =
-        Math.random() * (chunkPlaneWidth - margin * 2) -
-        (chunkPlaneWidth / 2 - margin);
-      const rz =
-        Math.random() * (chunkPlaneDepth - margin * 2) -
-        (chunkPlaneDepth / 2 - margin);
-      const worldX = centerX + rx;
-      const worldZ = centerZ + rz;
-      const y = sampleFromHeightData(worldX, worldZ);
-      // Skip placing trees that would be underwater
-      if (y > this.waterLevel + 12) {
-        const seed = cx * 73_856_093 + cz * 19_349_663;
-        const pickIndex = Math.abs(seed) % this.baseTrees.length;
+      for (let treeIndex = 0; treeIndex < treeCount; treeIndex += 1) {
+        const rA = Math.random();
+        const rB = Math.random();
+        const rx =
+          rA * (chunkPlaneWidth - margin * 2) - (chunkPlaneWidth / 2 - margin);
+        const rz =
+          rB * (chunkPlaneDepth - margin * 2) - (chunkPlaneDepth / 2 - margin);
+        const worldX = centerX + rx;
+        const worldZ = centerZ + rz;
+        const y = sampleFromHeightData(worldX, worldZ);
+        // Skip placing trees that would be underwater
+        if (y <= this.waterLevel + 12) continue;
+
+        const pickIndex =
+          Math.floor(Math.random() * this.baseTrees.length) %
+          this.baseTrees.length;
         const prototype = this.baseTrees[pickIndex];
         const treeClone = prototype.clone(true);
-        // Small scale variation
-        const scaleFactor = 0.8 + Math.random() * 0.8;
+        const scaleFactor = 0.6 + Math.random();
         treeClone.scale.set(scaleFactor, scaleFactor, scaleFactor);
         treeClone.position.set(worldX, y, worldZ);
         objects.push(treeClone);
