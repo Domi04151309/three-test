@@ -8,6 +8,7 @@ import { Daisy } from './daisy';
 import { AnemoneFlower } from './anemone-flower';
 import { CrocusFlower } from './crocus-flower';
 import { DaffodilFlower } from './daffodil-flower';
+import { DandelionFlower } from './dandelion-flower';
 
 export class Terrain extends THREE.Group {
   private chunkSize = 8;
@@ -505,6 +506,7 @@ export class Terrain extends THREE.Group {
         AnemoneFlower,
         CrocusFlower,
         DaffodilFlower,
+        DandelionFlower,
       ];
       const pickIndex = Math.floor(Math.random() * flowerConstructors.length);
       const ChosenFlower = flowerConstructors[pickIndex];
