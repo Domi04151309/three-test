@@ -89,10 +89,16 @@ export class TerrainChunk {
 
     for (const object of this.objects) {
       parent.remove(object);
-      if (!(object instanceof THREE.Mesh)) continue;
-      const meshObject = object as THREE.Mesh;
-      meshObject.geometry.dispose();
-      disposeMaterial(meshObject.material);
+      object.traverse((child) => {
+        if (!(child instanceof THREE.Mesh)) return;
+        // Skip disposing shared model resources (e.g., flower prototype assets)
+        const { userData } = child as { userData?: Record<string, unknown> };
+        const isShared = userData?.sharedModel === true;
+        if (isShared) return;
+        const meshObject = child as THREE.Mesh;
+        meshObject.geometry.dispose();
+        disposeMaterial(meshObject.material);
+      });
     }
 
     const geom = this.mesh.geometry;

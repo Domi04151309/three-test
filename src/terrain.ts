@@ -4,6 +4,7 @@ import { Grass } from './grass';
 import { NoiseGenerator } from './noise';
 import { SkyController } from './sky';
 import { Tree } from '@dgreenheck/ez-tree';
+import { Daisy } from './daisy';
 
 export class Terrain extends THREE.Group {
   private chunkSize = 8;
@@ -43,6 +44,8 @@ export class Terrain extends THREE.Group {
   private maxTreesPerChunk = 16;
   private treeLowThreshold = 0.4;
   private treeHighThreshold = 0.6;
+  private maxDaisiesPerChunk = 48;
+  private flowerNoiseScale = 0.12;
 
   constructor(skyController: SkyController) {
     super();
@@ -454,6 +457,46 @@ export class Terrain extends THREE.Group {
         treeClone.position.set(worldX, y, worldZ);
         objects.push(treeClone);
       }
+    }
+
+    // Place flowers (daisies) using noise + simple slope/water checks.
+    // This uses a different noise band so flower density differs from trees.
+    const flowerNoiseOptions = {
+      lacunarity: this.lacunarity,
+      octaves: 2,
+      offsetZ: this.seed + 4096,
+      persistence: 0.5,
+      scale: this.flowerNoiseScale,
+    };
+    const fRaw = this.noiseGenerator.sampleOctaves(
+      centerX / this.cellSize,
+      centerZ / this.cellSize,
+      flowerNoiseOptions,
+    );
+    // Normalize amplitude sum for 2 octaves
+    const ampSum = 1 + 0.5;
+    const density = Math.max(0, Math.min(1, (fRaw / ampSum + 1) * 0.5));
+    const daisiesCount = Math.floor(density * this.maxDaisiesPerChunk);
+    const flowerMargin = this.cellSize * 0.5;
+    for (let fi = 0; fi < daisiesCount; fi += 1) {
+      const rx =
+        Math.random() * (chunkPlaneWidth - flowerMargin * 2) -
+        (chunkPlaneWidth / 2 - flowerMargin);
+      const rz =
+        Math.random() * (chunkPlaneDepth - flowerMargin * 2) -
+        (chunkPlaneDepth / 2 - flowerMargin);
+      const worldX = centerX + rx;
+      const worldZ = centerZ + rz;
+      const y = sampleFromHeightData(worldX, worldZ);
+      if (y <= this.waterLevel + 12) continue;
+      // Simple slope test: sample a nearby point and require gentle slope
+      const hNeighbor = sampleFromHeightData(worldX + this.cellSize, worldZ);
+      const slope = Math.abs(hNeighbor - y) / this.cellSize;
+      if (slope > 0.6) continue;
+      const scaleFactor = 0.6 + Math.random() * 0.8;
+      const daisy = new Daisy(scaleFactor);
+      daisy.getObject3D().position.set(worldX, y, worldZ);
+      objects.push(daisy.getObject3D());
     }
 
     const key = Terrain.makeKey(cx, cz);

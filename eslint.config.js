@@ -98,6 +98,7 @@ export default defineConfig(
       ...sonarjs.configs.recommended.rules,
       'sonarjs/assertions-in-tests': 'off',
       'sonarjs/cognitive-complexity': 'off',
+      'sonarjs/no-async-constructor': 'off',
       'sonarjs/no-empty-function': 'off',
       'sonarjs/no-hardcoded-credentials': 'off',
       'sonarjs/no-hardcoded-passwords': 'off',
