@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { Grass } from './grass';
-import { SkyController } from './sky';
 
 export interface ChunkEntry {
   mesh: THREE.Mesh;
@@ -48,12 +47,12 @@ export class TerrainChunk {
     return this.heightData[index] || 0;
   }
 
-  update(camera: THREE.Camera, delta: number, skyController: SkyController) {
+  update(camera: THREE.Camera) {
     // Update grass and other per-chunk items. Water is managed globally by SkyController.
     // Use camera world position for LOD checks — camera.position may be local.
     const camPos = new THREE.Vector3();
     camera.getWorldPosition(camPos);
-    this.grass.update(delta, camPos, skyController);
+    this.grass.update(camPos);
     // Update any LOD objects in this chunk (including nested LODs)
     for (const object of this.objects)
       object.traverse((child) => {

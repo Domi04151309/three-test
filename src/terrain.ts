@@ -661,7 +661,9 @@ export class Terrain extends THREE.Group {
   }
 
   update(camera: THREE.Camera, delta: number): void {
-    for (const ch of this.chunks.values())
-      ch.update(camera, delta, this.skyController);
+    const camPos = new THREE.Vector3();
+    camera.getWorldPosition(camPos);
+    Grass.updateGlobalUniforms(delta, camPos, this.skyController);
+    for (const ch of this.chunks.values()) ch.update(camera);
   }
 }
