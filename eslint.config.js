@@ -68,6 +68,7 @@ export default defineConfig(
         },
       ],
       'require-atomic-updates': 'off',
+      'sort-imports': 'off',
     },
   },
   // Array func plugin configuration.
