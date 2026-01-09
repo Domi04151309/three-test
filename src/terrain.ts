@@ -497,8 +497,8 @@ export class Terrain extends THREE.Group {
       if (slope > 0.6) continue;
       const scaleFactor = 0.6 + Math.random() * 0.8;
       const daisy = new Daisy(scaleFactor);
-      daisy.getObject3D().position.set(worldX, y, worldZ);
-      objects.push(daisy.getObject3D());
+      daisy.position.set(worldX, y, worldZ);
+      objects.push(daisy);
     }
 
     const key = Terrain.makeKey(cx, cz);
