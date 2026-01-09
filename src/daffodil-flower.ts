@@ -1,0 +1,19 @@
+import { Flower } from './flower';
+
+const MODEL_PATH = '/src/models/daffodil_flower/';
+const MTL_FILE = '12977_Daffodil_flower_v1_l2.mtl';
+const OBJ_FILE = '12977_Daffodil_flower_v1_l2.obj';
+const MODEL_SCALE = 0.3;
+
+export class DaffodilFlower extends Flower {
+  constructor(scale: number) {
+    super();
+    this.loadAndAttachOBJModel({
+      basePath: MODEL_PATH,
+      externalScale: scale,
+      modelScale: MODEL_SCALE,
+      mtlFile: MTL_FILE,
+      objectFile: OBJ_FILE,
+    }).catch(console.error);
+  }
+}

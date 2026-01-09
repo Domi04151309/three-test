@@ -7,6 +7,7 @@ import { Tree } from '@dgreenheck/ez-tree';
 import { Daisy } from './daisy';
 import { AnemoneFlower } from './anemone-flower';
 import { CrocusFlower } from './crocus-flower';
+import { DaffodilFlower } from './daffodil-flower';
 
 export class Terrain extends THREE.Group {
   private chunkSize = 8;
@@ -503,6 +504,7 @@ export class Terrain extends THREE.Group {
         Daisy,
         AnemoneFlower,
         CrocusFlower,
+        DaffodilFlower,
       ];
       const pickIndex = Math.floor(Math.random() * flowerConstructors.length);
       const ChosenFlower = flowerConstructors[pickIndex];
