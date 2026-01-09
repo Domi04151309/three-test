@@ -46,10 +46,10 @@ export class SkyController extends THREE.Group {
     this.sun.setFromSphericalCoords(1, phi, theta);
     uniforms.sunPosition.value.copy(this.sun);
 
-    this.ambient = new THREE.AmbientLight(this.color, 1);
+    this.ambient = new THREE.AmbientLight(this.color, 2);
     this.add(this.ambient);
 
-    this.sunLight = new THREE.DirectionalLight(this.color, 1);
+    this.sunLight = new THREE.DirectionalLight(this.color, 10);
     this.sunLight.position.copy(this.sun).multiplyScalar(450_000);
     this.sunLight.castShadow = true;
     this.add(this.sunLight);

@@ -288,8 +288,8 @@ export class Terrain extends THREE.Group {
     const pos = geometry.attributes.position.array as Float32Array;
     const vertCount = pos.length / 3;
     const colors = new Float32Array(vertCount * 3);
-    const sand = new THREE.Color('#d8c29a');
-    const grassColor = new THREE.Color('#53692b');
+    const sand = new THREE.Color('hsl(40, 44%, 70%)');
+    const grassColor = new THREE.Color('hsl(80, 40%, 15%)');
     const cutoff = this.waterLevel + 8;
     // World units for transition width
     const fuzz = 6;
@@ -350,13 +350,15 @@ export class Terrain extends THREE.Group {
     noiseTex.magFilter = THREE.LinearFilter;
     noiseTex.repeat.set(8, 8);
     noiseTex.needsUpdate = true;
-    const material = new THREE.MeshStandardMaterial({
+    const material = new THREE.MeshPhysicalMaterial({
       bumpMap: noiseTex,
-      bumpScale: 4,
+      bumpScale: 2,
       color: new THREE.Color('#ffffff'),
-      envMapIntensity: 0.6,
+      envMapIntensity: 0,
       metalness: 0,
-      roughness: 0.9,
+      roughness: 1,
+      specularColor: new THREE.Color('#000000'),
+      specularIntensity: 0,
       vertexColors: true,
     });
     const mesh = new THREE.Mesh(geometry, material);
