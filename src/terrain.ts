@@ -5,6 +5,7 @@ import { NoiseGenerator } from './noise';
 import { SkyController } from './sky';
 import { Tree } from '@dgreenheck/ez-tree';
 import { Daisy } from './daisy';
+import { AnemoneFlower } from './anemone-flower';
 
 export class Terrain extends THREE.Group {
   private chunkSize = 8;
@@ -461,7 +462,7 @@ export class Terrain extends THREE.Group {
       }
     }
 
-    // Place flowers (daisies) using noise + simple slope/water checks.
+    // Place flowers (daisies + anemones) using noise + simple slope/water checks.
     // This uses a different noise band so flower density differs from trees.
     const flowerNoiseOptions = {
       lacunarity: this.lacunarity,
@@ -478,9 +479,9 @@ export class Terrain extends THREE.Group {
     // Normalize amplitude sum for 2 octaves
     const ampSum = 1 + 0.5;
     const density = Math.max(0, Math.min(1, (fRaw / ampSum + 1) * 0.5));
-    const daisiesCount = Math.floor(density * this.maxDaisiesPerChunk);
+    const flowersCount = Math.floor(density * this.maxDaisiesPerChunk);
     const flowerMargin = this.cellSize * 0.5;
-    for (let fi = 0; fi < daisiesCount; fi += 1) {
+    for (let fi = 0; fi < flowersCount; fi += 1) {
       const rx =
         Math.random() * (chunkPlaneWidth - flowerMargin * 2) -
         (chunkPlaneWidth / 2 - flowerMargin);
@@ -496,9 +497,13 @@ export class Terrain extends THREE.Group {
       const slope = Math.abs(hNeighbor - y) / this.cellSize;
       if (slope > 0.6) continue;
       const scaleFactor = 0.6 + Math.random() * 0.8;
-      const daisy = new Daisy(scaleFactor);
-      daisy.position.set(worldX, y, worldZ);
-      objects.push(daisy);
+      // Randomly choose between Daisy and Anemone
+      const flowerObject: THREE.Object3D =
+        Math.random() < 0.5
+          ? new Daisy(scaleFactor)
+          : new AnemoneFlower(scaleFactor);
+      flowerObject.position.set(worldX, y, worldZ);
+      objects.push(flowerObject);
     }
 
     const key = Terrain.makeKey(cx, cz);
