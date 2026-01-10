@@ -11,6 +11,7 @@ import sonarjs from 'eslint-plugin-sonarjs';
 import ts from 'typescript-eslint';
 import unicorn from 'eslint-plugin-unicorn';
 
+/* eslint @eslint-community/eslint-comments/no-use: off */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 export default defineConfig(
   // General configuration.
@@ -33,10 +34,10 @@ export default defineConfig(
         },
       ],
       'init-declarations': 'off',
-      'max-lines': 'off',
+      'max-lines': 'warn',
       'max-lines-per-function': 'off',
       'max-params': ['error', 5],
-      'max-statements': 'off',
+      'max-statements': ['warn', 50],
       'no-console': [
         'error',
         {
@@ -85,6 +86,10 @@ export default defineConfig(
     rules: {
       ...comments.recommended.rules,
       '@eslint-community/eslint-comments/no-unused-disable': 'error',
+      '@eslint-community/eslint-comments/no-use': [
+        'error',
+        { allow: ['eslint-enable'] },
+      ],
     },
   },
   // Promise plugin configuration.

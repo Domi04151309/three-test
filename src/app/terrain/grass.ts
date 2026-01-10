@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { SkyController } from './sky';
+import type { SkyController } from '../sky/sky';
 
 function smoothStep(value: number, edge0: number, edge1: number) {
   let tv = (value - edge0) / (edge1 - edge0 || 1);
@@ -93,7 +93,7 @@ export class Grass {
       const loader = new THREE.TextureLoader();
       loader.crossOrigin = '';
       const grassTex = loader.load(
-        new URL('textures/grass/blade_diffuse.jpg', import.meta.url).href,
+        '/src/assets/models/grass/blade_diffuse.jpg',
       );
       grassTex.minFilter = THREE.LinearMipmapLinearFilter;
       grassTex.magFilter = THREE.LinearFilter;
@@ -103,9 +103,7 @@ export class Grass {
     if (!Grass.sharedAlphaMap) {
       const loader = new THREE.TextureLoader();
       loader.crossOrigin = '';
-      const alphaTex = loader.load(
-        new URL('textures/grass/blade_alpha.jpg', import.meta.url).href,
-      );
+      const alphaTex = loader.load('/src/assets/models/grass/blade_alpha.jpg');
       alphaTex.minFilter = THREE.LinearMipmapLinearFilter;
       alphaTex.magFilter = THREE.LinearFilter;
       alphaTex.anisotropy = 1;

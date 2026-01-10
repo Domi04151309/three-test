@@ -124,7 +124,7 @@ export class SkyController extends THREE.Group {
     // Create a single, large water plane that follows the player.
     const loader = new THREE.TextureLoader();
     const waterNormals = loader.load(
-      new URL('textures/waternormals.jpg', import.meta.url).href,
+      '/src/assets/models/water/waternormals.jpg',
     );
     waterNormals.wrapS = THREE.RepeatWrapping;
     waterNormals.wrapT = THREE.RepeatWrapping;

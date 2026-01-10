@@ -2,15 +2,15 @@ import * as THREE from 'three';
 import { ChunkEntry, TerrainChunk } from './terrain-chunk';
 import { Grass } from './grass';
 import { NoiseGenerator } from './noise';
-import { SkyController } from './sky';
+import { SkyController } from '../sky/sky';
 import { Tree } from '@dgreenheck/ez-tree';
-import { Daisy } from './daisy';
-import { AnemoneFlower } from './anemone-flower';
-import { CrocusFlower } from './crocus-flower';
-import { DaffodilFlower } from './daffodil-flower';
-import { DandelionFlower } from './dandelion-flower';
-import { SnowdropFlower } from './snowdrop-flower';
-import { Rock } from './rock';
+import { Daisy } from '../flowers/daisy';
+import { AnemoneFlower } from '../flowers/anemone-flower';
+import { CrocusFlower } from '../flowers/crocus-flower';
+import { DaffodilFlower } from '../flowers/daffodil-flower';
+import { DandelionFlower } from '../flowers/dandelion-flower';
+import { SnowdropFlower } from '../flowers/snowdrop-flower';
+import { Rock } from '../flowers/rock';
 
 export class Terrain extends THREE.Group {
   private chunkSize = 8;

@@ -1,11 +1,11 @@
 import { Flower } from './flower';
 
-const MODEL_PATH = '/src/models/daisy/';
-const MTL_FILE = '10441_Daisy_v1_max2010_iteration-2.mtl';
-const OBJ_FILE = '10441_Daisy_v1_max2010_iteration-2.obj';
-const MODEL_SCALE = 0.2;
+const MODEL_PATH = '/src/assets/models/crocus_flower/';
+const MTL_FILE = '12974_crocus_flower_v1_l3.mtl';
+const OBJ_FILE = '12974_crocus_flower_v1_l3.obj';
+const MODEL_SCALE = 0.1;
 
-export class Daisy extends Flower {
+export class CrocusFlower extends Flower {
   constructor(scale: number) {
     super();
     this.loadAndAttachOBJModel({
