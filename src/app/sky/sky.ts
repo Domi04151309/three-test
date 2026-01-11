@@ -121,11 +121,12 @@ export class SkyController extends THREE.Group {
       cloud.update(camera);
     }
 
-
     const flareDistance = 500;
-    const flarePos = this.sun.clone().multiplyScalar(flareDistance).add(playerPos);
+    const flarePos = this.sun
+      .clone()
+      .multiplyScalar(flareDistance)
+      .add(playerPos);
     this.lensflareController.updatePosition(flarePos);
-    this.lensflareController.update(camera);
 
     this.water.position.set(playerPos.x, this.waterLevel, playerPos.z);
     const uniforms = this.water.material.uniforms as {
