@@ -61,6 +61,7 @@ export default defineConfig(
           varsIgnorePattern: '^_$',
         },
       ],
+      'no-use-before-define': 'off',
       'one-var': [
         'error',
         {
