@@ -1,4 +1,5 @@
 import * as Cloud from './cloud';
+import { LensflareController } from './lensflare';
 import * as THREE from 'three';
 import { Sky } from 'three/examples/jsm/objects/Sky';
 import { Water } from 'three/examples/jsm/objects/Water';
@@ -11,6 +12,7 @@ export class SkyController extends THREE.Group {
   private clouds: Cloud.CloudVolume[] = [];
   private cloudOffsets: THREE.Vector3[] = [];
   private water!: Water;
+  private lensflareController!: LensflareController;
 
   private waterLevel = 16;
 
@@ -58,6 +60,13 @@ export class SkyController extends THREE.Group {
     this.sunLight.castShadow = true;
     this.add(this.sunLight);
     this.add(this.sunLight.target);
+
+    this.lensflareController = new LensflareController();
+    this.add(this.lensflareController);
+
+    this.lensflareController.updatePosition(
+      this.sun.clone().multiplyScalar(4000),
+    );
   }
 
   private createClouds(): void {
@@ -111,6 +120,12 @@ export class SkyController extends THREE.Group {
       cloud.position.set(playerPos.x + off.x, off.y, playerPos.z + off.z);
       cloud.update(camera);
     }
+
+
+    const flareDistance = 500;
+    const flarePos = this.sun.clone().multiplyScalar(flareDistance).add(playerPos);
+    this.lensflareController.updatePosition(flarePos);
+    this.lensflareController.update(camera);
 
     this.water.position.set(playerPos.x, this.waterLevel, playerPos.z);
     const uniforms = this.water.material.uniforms as {
