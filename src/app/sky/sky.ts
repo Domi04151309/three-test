@@ -9,13 +9,14 @@ import { Water } from 'three/examples/jsm/objects/Water';
 
 export class SkyController extends THREE.Group {
   public sun: THREE.Vector3;
-  private sky: Sky;
-  private sunLight: THREE.DirectionalLight;
-  private ambient: THREE.AmbientLight;
-  private lensflareLight: THREE.PointLight;
+  private sky!: Sky;
+  private sunLight!: THREE.DirectionalLight;
+  private ambient!: THREE.AmbientLight;
+  private lensflareLight!: THREE.PointLight;
   private clouds: Cloud.CloudVolume[] = [];
   private cloudOffsets: THREE.Vector3[] = [];
-  private water: Water;
+  private water!: Water;
+
   private waterLevel = 16;
 
   private readonly azimuth: number = 180;
@@ -28,11 +29,18 @@ export class SkyController extends THREE.Group {
 
   constructor() {
     super();
+    this.sun = new THREE.Vector3();
+    this.initSky();
+    this.initLights();
+    this.initLensflare();
+    this.createClouds();
+    this.initWater();
+  }
+
+  private initSky(): void {
     this.sky = new Sky();
     this.sky.scale.setScalar(450_000);
     this.add(this.sky);
-
-    this.sun = new THREE.Vector3();
 
     const { uniforms } = this.sky.material;
     uniforms.turbidity.value = 10;
@@ -45,7 +53,9 @@ export class SkyController extends THREE.Group {
 
     this.sun.setFromSphericalCoords(1, phi, theta);
     uniforms.sunPosition.value.copy(this.sun);
+  }
 
+  private initLights(): void {
     this.ambient = new THREE.AmbientLight(this.color, 2);
     this.add(this.ambient);
 
@@ -55,14 +65,14 @@ export class SkyController extends THREE.Group {
     this.add(this.sunLight);
     this.add(this.sunLight.target);
 
-    // Create a point light at the sun for lensflare rendering
     const flareColor = new THREE.Color(this.color);
     const point = new THREE.PointLight(flareColor, 1.5, 0, 2);
     point.position.copy(this.sunLight.position);
     this.lensflareLight = point;
     this.add(point);
+  }
 
-    // Generate simple flare textures via canvas to avoid external assets
+  private initLensflare(): void {
     const makeTexture = (
       size: number,
       inner = '#ffffff',
@@ -101,15 +111,17 @@ export class SkyController extends THREE.Group {
       'rgba(255,255,255,0.6)',
       'rgba(255,255,255,0)',
     );
-
+    const flareColor = new THREE.Color(this.color);
     const lensflare = new Lensflare();
     lensflare.addElement(new LensflareElement(tex0, 1400, 0, flareColor));
     lensflare.addElement(new LensflareElement(tex3, 120, 0.4));
     lensflare.addElement(new LensflareElement(tex3, 140, 0.6));
     lensflare.addElement(new LensflareElement(tex3, 220, 0.85));
     lensflare.addElement(new LensflareElement(tex3, 130, 1));
-    point.add(lensflare);
-    // Create volumetric clouds and keep offsets so they can follow the player.
+    this.lensflareLight.add(lensflare);
+  }
+
+  private createClouds(): void {
     const cloudCount = 12;
     for (let index = 0; index < cloudCount; index += 1) {
       const ox = SkyController.rand(-2000, 2000);
@@ -120,8 +132,9 @@ export class SkyController extends THREE.Group {
       this.cloudOffsets.push(new THREE.Vector3(ox, oy, oz));
       this.add(cloud);
     }
+  }
 
-    // Create a single, large water plane that follows the player.
+  private initWater(): void {
     const loader = new THREE.TextureLoader();
     const waterNormals = loader.load(
       '/src/assets/models/water/waternormals.jpg',

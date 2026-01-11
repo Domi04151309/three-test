@@ -90,85 +90,104 @@ export class Terrain extends THREE.Group {
       const [cx, cz] = key.split(',').map(Number);
       const chunk = this.chunks.get(key);
       if (!chunk) continue;
-      const geomA = chunk.mesh.geometry;
-      const na = (
-        geomA as unknown as { attributes?: { normal?: THREE.BufferAttribute } }
-      ).attributes?.normal;
-      if (!na) continue;
-      const arrayA = na.array as Float32Array;
+      const source = Terrain.getChunkNormalArray(chunk);
+      if (!source) continue;
 
-      // Neighbor on +X (right edge of A with left edge of B)
-      const rightKey = Terrain.makeKey(cx + 1, cz);
-      const right = this.chunks.get(rightKey);
-      if (right) {
-        const geomB = right.mesh.geometry;
-        const nb = (
-          geomB as unknown as {
-            attributes?: { normal?: THREE.BufferAttribute };
-          }
-        ).attributes?.normal;
-        if (nb) {
-          const arrayB = nb.array as Float32Array;
-          for (let lz = 0; lz < cd; lz += 1) {
-            const ia = cw - 1 + lz * cw;
-            const ib = 0 + lz * cw;
-            const ax = arrayA[ia * 3];
-            const ay = arrayA[ia * 3 + 1];
-            const az = arrayA[ia * 3 + 2];
-            const bx = arrayB[ib * 3];
-            const by = arrayB[ib * 3 + 1];
-            const bz = arrayB[ib * 3 + 2];
-            const mx = (ax + bx) * 0.5;
-            const my = (ay + by) * 0.5;
-            const mz = (az + bz) * 0.5;
-            arrayA[ia * 3] = mx;
-            arrayA[ia * 3 + 1] = my;
-            arrayA[ia * 3 + 2] = mz;
-            arrayB[ib * 3] = mx;
-            arrayB[ib * 3 + 1] = my;
-            arrayB[ib * 3 + 2] = mz;
-          }
-          na.needsUpdate = true;
-          nb.needsUpdate = true;
-        }
+      // Neighbor +X
+      const right = this.chunks.get(Terrain.makeKey(cx + 1, cz));
+      const rightNormals = right ? Terrain.getChunkNormalArray(right) : null;
+      if (rightNormals) {
+        Terrain.mergeBorderNormals({
+          arrayA: source.array,
+          attributeA: source.attr,
+          arrayB: rightNormals.array,
+          attributeB: rightNormals.attr,
+          cw,
+          cd,
+          orientation: 'x',
+        });
       }
 
-      // Neighbor on +Z (far edge of A with near edge of B)
-      const farKey = Terrain.makeKey(cx, cz + 1);
-      const far = this.chunks.get(farKey);
-      if (far) {
-        const geomB = far.mesh.geometry;
-        const nb = (
-          geomB as unknown as {
-            attributes?: { normal?: THREE.BufferAttribute };
-          }
-        ).attributes?.normal;
-        if (nb) {
-          const arrayB = nb.array as Float32Array;
-          for (let lx = 0; lx < cw; lx += 1) {
-            const ia = lx + (cd - 1) * cw;
-            const ib = lx + 0 * cw;
-            const ax = arrayA[ia * 3];
-            const ay = arrayA[ia * 3 + 1];
-            const az = arrayA[ia * 3 + 2];
-            const bx = arrayB[ib * 3];
-            const by = arrayB[ib * 3 + 1];
-            const bz = arrayB[ib * 3 + 2];
-            const mx = (ax + bx) * 0.5;
-            const my = (ay + by) * 0.5;
-            const mz = (az + bz) * 0.5;
-            arrayA[ia * 3] = mx;
-            arrayA[ia * 3 + 1] = my;
-            arrayA[ia * 3 + 2] = mz;
-            arrayB[ib * 3] = mx;
-            arrayB[ib * 3 + 1] = my;
-            arrayB[ib * 3 + 2] = mz;
-          }
-          na.needsUpdate = true;
-          nb.needsUpdate = true;
-        }
+      // Neighbor +Z
+      const far = this.chunks.get(Terrain.makeKey(cx, cz + 1));
+      const farNormals = far ? Terrain.getChunkNormalArray(far) : null;
+      if (farNormals) {
+        Terrain.mergeBorderNormals({
+          arrayA: source.array,
+          attributeA: source.attr,
+          arrayB: farNormals.array,
+          attributeB: farNormals.attr,
+          cw,
+          cd,
+          orientation: 'z',
+        });
       }
     }
+  }
+
+  private static getChunkNormalArray(chunk: TerrainChunk) {
+    const geom = chunk.mesh.geometry as unknown as {
+      attributes?: { normal?: THREE.BufferAttribute };
+    };
+    const attribute = geom.attributes?.normal;
+    if (!attribute) return null;
+    return { array: attribute.array as Float32Array, attr: attribute };
+  }
+
+  private static mergeBorderNormals(options: {
+    arrayA: Float32Array;
+    attributeA: THREE.BufferAttribute;
+    arrayB: Float32Array;
+    attributeB: THREE.BufferAttribute;
+    cw: number;
+    cd: number;
+    orientation: 'x' | 'z';
+  }) {
+    const { arrayA, attributeA, arrayB, attributeB, cw, cd, orientation } =
+      options;
+    if (orientation === 'x') {
+      for (let lz = 0; lz < cd; lz += 1) {
+        const ia = cw - 1 + lz * cw;
+        const ib = 0 + lz * cw;
+        const ax = arrayA[ia * 3];
+        const ay = arrayA[ia * 3 + 1];
+        const az = arrayA[ia * 3 + 2];
+        const bx = arrayB[ib * 3];
+        const by = arrayB[ib * 3 + 1];
+        const bz = arrayB[ib * 3 + 2];
+        const mx = (ax + bx) * 0.5;
+        const my = (ay + by) * 0.5;
+        const mz = (az + bz) * 0.5;
+        arrayA[ia * 3] = mx;
+        arrayA[ia * 3 + 1] = my;
+        arrayA[ia * 3 + 2] = mz;
+        arrayB[ib * 3] = mx;
+        arrayB[ib * 3 + 1] = my;
+        arrayB[ib * 3 + 2] = mz;
+      }
+    } else {
+      for (let lx = 0; lx < cw; lx += 1) {
+        const ia = lx + (cd - 1) * cw;
+        const ib = lx + 0 * cw;
+        const ax = arrayA[ia * 3];
+        const ay = arrayA[ia * 3 + 1];
+        const az = arrayA[ia * 3 + 2];
+        const bx = arrayB[ib * 3];
+        const by = arrayB[ib * 3 + 1];
+        const bz = arrayB[ib * 3 + 2];
+        const mx = (ax + bx) * 0.5;
+        const my = (ay + by) * 0.5;
+        const mz = (az + bz) * 0.5;
+        arrayA[ia * 3] = mx;
+        arrayA[ia * 3 + 1] = my;
+        arrayA[ia * 3 + 2] = mz;
+        arrayB[ib * 3] = mx;
+        arrayB[ib * 3 + 1] = my;
+        arrayB[ib * 3 + 2] = mz;
+      }
+    }
+    attributeA.needsUpdate = true;
+    attributeB.needsUpdate = true;
   }
 
   private generateHeight(
@@ -249,26 +268,72 @@ export class Terrain extends THREE.Group {
   private createChunk(cx: number, cz: number) {
     const offsetX = cx * this.chunkSize;
     const offsetZ = cz * this.chunkSize;
-    // Always generate full chunk grid; allow streaming beyond initial world bounds
     const cw = this.chunkSize + 1;
     const cd = this.chunkSize + 1;
 
     const heightData = this.generateHeight(cw, cd, offsetX, offsetZ);
-
-    // Validate height data to avoid NaNs in geometry
     for (let hi = 0; hi < heightData.length; hi += 1) {
-      const value = heightData[hi];
-      if (!Number.isFinite(value)) {
-        console.warn('Terrain: non-finite heightData at', cx, cz, hi, value);
-        heightData[hi] = 0;
-      } else if (value < 0) {
-        heightData[hi] = 0;
-      }
+      const vertex = heightData[hi];
+      if (!Number.isFinite(vertex) || vertex < 0) heightData[hi] = 0;
     }
 
+    const { geometry, centerX, centerZ, chunkPlaneWidth, chunkPlaneDepth } =
+      this.buildGeometry(cw, cd, offsetX, offsetZ, heightData);
+
+    this.colorGeometry(geometry, centerX, centerZ);
+
+    const material = Terrain.createNoiseMaterial();
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.position.set(centerX, 0, centerZ);
+
+    const sampleFromHeightData = this.makeSampleFromHeightData(
+      heightData,
+      cw,
+      cd,
+      offsetX,
+      offsetZ,
+    );
+
+    const grass = this.createGrassForChunk(
+      centerX,
+      centerZ,
+      sampleFromHeightData,
+      chunkPlaneWidth,
+    );
+
+    const objects = this.generateObjectsForChunk(
+      centerX,
+      centerZ,
+      chunkPlaneWidth,
+      chunkPlaneDepth,
+      sampleFromHeightData,
+    );
+
+    const key = Terrain.makeKey(cx, cz);
+    const entry: ChunkEntry = {
+      depth: cd,
+      grass,
+      heightData,
+      mesh,
+      objects,
+      offsetX,
+      offsetZ,
+      width: cw,
+    };
+    const chunk = new TerrainChunk(entry);
+    chunk.addTo(this);
+    this.chunks.set(key, chunk);
+  }
+
+  private buildGeometry(
+    cw: number,
+    cd: number,
+    offsetX: number,
+    offsetZ: number,
+    heightData: Float32Array,
+  ) {
     const chunkPlaneWidth = (cw - 1) * this.cellSize;
     const chunkPlaneDepth = (cd - 1) * this.cellSize;
-
     const geometry = new THREE.PlaneGeometry(
       chunkPlaneWidth,
       chunkPlaneDepth,
@@ -278,14 +343,9 @@ export class Terrain extends THREE.Group {
     geometry.rotateX(-Math.PI / 2);
 
     const vertices = geometry.attributes.position.array as Float32Array;
-    const vertLength = vertices.length;
-    let sampleIndex = 0;
-    for (let vertIndex = 0; vertIndex < vertLength; vertIndex += 3) {
-      vertices[vertIndex + 1] = heightData[sampleIndex] * this.heightScale;
-      sampleIndex += 1;
-    }
+    for (let vi = 0, si = 0; vi < vertices.length; vi += 3, si += 1)
+      vertices[vi + 1] = heightData[si] * this.heightScale;
 
-    // Ensure normals reflect displaced vertices
     geometry.attributes.position.needsUpdate = true;
     geometry.computeVertexNormals();
     const normalAttribute = geometry.attributes.normal as
@@ -293,17 +353,24 @@ export class Terrain extends THREE.Group {
       | undefined;
     if (normalAttribute) normalAttribute.needsUpdate = true;
 
-    // Color vertices: blend sand and grass using noise to fuzz the border
+    const centerX = (offsetX + (cw - 1) / 2) * this.cellSize;
+    const centerZ = (offsetZ + (cd - 1) / 2) * this.cellSize;
+    return { geometry, centerX, centerZ, chunkPlaneWidth, chunkPlaneDepth };
+  }
+
+  private colorGeometry(
+    geometry: THREE.BufferGeometry,
+    centerX: number,
+    centerZ: number,
+  ) {
     const pos = geometry.attributes.position.array as Float32Array;
     const vertCount = pos.length / 3;
     const colors = new Float32Array(vertCount * 3);
     const sand = new THREE.Color('hsl(40, 44%, 70%)');
     const grassColor = new THREE.Color('hsl(80, 40%, 15%)');
     const cutoff = this.waterLevel + 8;
-    // World units for transition width
     const fuzz = 6;
     const fuzzHalf = fuzz * 0.5;
-    // How much noise perturbs the cutoff (world units)
     const noiseAmp = 4;
     const noiseOptions = {
       lacunarity: 2,
@@ -311,11 +378,8 @@ export class Terrain extends THREE.Group {
       offsetZ: this.seed + 1024,
       persistence: 0.5,
       scale: 0.02,
-    };
-    // Compute chunk center in world coords for vertex -> world mapping
-    const centerX = (offsetX + (cw - 1) / 2) * this.cellSize;
-    const centerZ = (offsetZ + (cd - 1) / 2) * this.cellSize;
-    const temporaryColor = new THREE.Color();
+    } as const;
+    const temporary = new THREE.Color();
     for (let vi = 0; vi < vertCount; vi += 1) {
       const y = pos[vi * 3 + 1];
       const localX = pos[vi * 3 + 0];
@@ -335,17 +399,18 @@ export class Terrain extends THREE.Group {
         localCutoff - fuzzHalf,
         localCutoff + fuzzHalf,
       );
-      temporaryColor.lerpColors(sand, grassColor, blend);
-      colors[vi * 3] = temporaryColor.r;
-      colors[vi * 3 + 1] = temporaryColor.g;
-      colors[vi * 3 + 2] = temporaryColor.b;
+      temporary.lerpColors(sand, grassColor, blend);
+      colors[vi * 3] = temporary.r;
+      colors[vi * 3 + 1] = temporary.g;
+      colors[vi * 3 + 2] = temporary.b;
     }
     geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3, false));
+  }
 
-    // Generate a small random noise texture and use it as the bump map
+  private static createNoiseMaterial() {
     const noiseSize = 256;
     const noiseData = new Uint8Array(noiseSize * noiseSize);
-    for (let index = 0; index < noiseData.length; index++)
+    for (let index = 0; index < noiseData.length; index += 1)
       noiseData[index] = Math.floor(Math.random() * 256);
     const noiseTex = new THREE.DataTexture(
       noiseData,
@@ -359,7 +424,7 @@ export class Terrain extends THREE.Group {
     noiseTex.magFilter = THREE.LinearFilter;
     noiseTex.repeat.set(8, 8);
     noiseTex.needsUpdate = true;
-    const material = new THREE.MeshPhysicalMaterial({
+    return new THREE.MeshPhysicalMaterial({
       bumpMap: noiseTex,
       bumpScale: 2,
       color: new THREE.Color('#ffffff'),
@@ -370,125 +435,169 @@ export class Terrain extends THREE.Group {
       specularIntensity: 0,
       vertexColors: true,
     });
-    const mesh = new THREE.Mesh(geometry, material);
+  }
 
-    mesh.position.set(centerX, 0, centerZ);
-
-    const sampleFromHeightData = (x: number, z: number) => {
-      // Map world coords to chunk-local sample grid (floating)
+  private makeSampleFromHeightData(
+    heightData: Float32Array,
+    cw: number,
+    cd: number,
+    offsetX: number,
+    offsetZ: number,
+  ) {
+    return (x: number, z: number) => {
       const fx = x / this.cellSize;
       const fz = z / this.cellSize;
       const ix = Math.floor(fx);
       const iz = Math.floor(fz);
       const tx = fx - ix;
       const tz = fz - iz;
-
       const lx = ix - offsetX;
       const lz = iz - offsetZ;
-      // If any of the four surrounding samples are outside the chunk, return 0
       if (lx < 0 || lz < 0 || lx + 1 >= cw || lz + 1 >= cd) return 0;
-
       const index11 = lx + lz * cw;
       const index21 = lx + 1 + lz * cw;
       const index12 = lx + (lz + 1) * cw;
       const index22 = lx + 1 + (lz + 1) * cw;
-
       const h11 = heightData[index11] || 0;
       const h21 = heightData[index21] || 0;
       const h12 = heightData[index12] || 0;
       const h22 = heightData[index22] || 0;
-
       const h1 = h11 * (1 - tx) + h21 * tx;
       const h2 = h12 * (1 - tx) + h22 * tx;
       return (h1 * (1 - tz) + h2 * tz) * this.heightScale;
     };
+  }
 
-    const grass = new Grass({
+  private createGrassForChunk(
+    centerX: number,
+    centerZ: number,
+    sample: (x: number, z: number) => number,
+    width: number,
+  ) {
+    return new Grass({
       bladeCount: 100_000,
       centerX,
       centerZ,
-      sampleHeight: sampleFromHeightData,
+      sampleHeight: sample,
       waterLevel: this.waterLevel,
-      width: chunkPlaneWidth,
+      width,
     });
+  }
 
-    // Use noise to determine how many trees this chunk gets (forests vs meadows)
+  private generateObjectsForChunk(
+    centerX: number,
+    centerZ: number,
+    chunkPlaneWidth: number,
+    chunkPlaneDepth: number,
+    sampleFromHeightData: (x: number, z: number) => number,
+  ) {
+    const trees = this.generateTreesForChunk(
+      centerX,
+      centerZ,
+      chunkPlaneWidth,
+      chunkPlaneDepth,
+      sampleFromHeightData,
+    );
+    const flowers = this.generateFlowersForChunk(
+      centerX,
+      centerZ,
+      chunkPlaneWidth,
+      chunkPlaneDepth,
+      sampleFromHeightData,
+    );
+    return [...trees, ...flowers];
+  }
+
+  private generateTreesForChunk(
+    centerX: number,
+    centerZ: number,
+    chunkPlaneWidth: number,
+    chunkPlaneDepth: number,
+    sampleFromHeightData: (x: number, z: number) => number,
+  ) {
     const objects: THREE.Object3D[] = [];
-    if (this.baseTrees.length > 0) {
-      // Sample noise at chunk center to determine density (normalized 0..1)
-      const tx = centerX / this.cellSize;
-      const tz = centerZ / this.cellSize;
-      const treeNoiseOptions = {
-        lacunarity: this.lacunarity,
-        octaves: this.treeNoiseOctaves,
-        offsetZ: this.seed + 2048,
-        persistence: this.treeNoisePersistence,
-        scale: this.treeNoiseScale,
-      };
-      const tRaw = this.noiseGenerator.sampleOctaves(tx, tz, treeNoiseOptions);
-      // Compute amplitude sum for the given octaves/persistence to normalize
-      let amplitude = 1;
-      let amplitudeSum = 0;
-      for (let index = 0; index < this.treeNoiseOctaves; index += 1) {
-        amplitudeSum += amplitude;
-        amplitude *= this.treeNoisePersistence;
-      }
-      const densityNormalized = Math.max(
-        0,
-        Math.min(1, (tRaw / (amplitudeSum || 1) + 1) * 0.5),
-      );
-      // Compute a bimodal tree count: clear below lowThreshold, dense above highThreshold.
-      let treeCount: number;
-      if (densityNormalized <= this.treeLowThreshold) treeCount = 0;
-      else if (densityNormalized >= this.treeHighThreshold)
-        treeCount = Math.floor(this.maxTreesPerChunk);
-      else treeCount = 0;
-
-      const margin = this.cellSize;
-      for (let treeIndex = 0; treeIndex < treeCount; treeIndex += 1) {
-        const rA = Math.random();
-        const rB = Math.random();
-        const rx =
-          rA * (chunkPlaneWidth - margin * 2) - (chunkPlaneWidth / 2 - margin);
-        const rz =
-          rB * (chunkPlaneDepth - margin * 2) - (chunkPlaneDepth / 2 - margin);
-        const worldX = centerX + rx;
-        const worldZ = centerZ + rz;
-        const y = sampleFromHeightData(worldX, worldZ);
-        // Skip placing trees that would be underwater
-        if (y <= this.waterLevel + 12) continue;
-
-        const pickIndex =
-          Math.floor(Math.random() * this.baseTrees.length) %
-          this.baseTrees.length;
-        const prototype = this.baseTrees[pickIndex];
-        const treeClone = prototype.clone(true);
-        const scaleFactor = 0.6 + Math.random();
-        treeClone.scale.set(scaleFactor, scaleFactor, scaleFactor);
-        treeClone.position.set(worldX, y, worldZ);
-        objects.push(treeClone);
-      }
+    if (this.baseTrees.length === 0) return objects;
+    const tx = centerX / this.cellSize;
+    const tz = centerZ / this.cellSize;
+    const treeNoiseOptions = {
+      lacunarity: this.lacunarity,
+      octaves: this.treeNoiseOctaves,
+      offsetZ: this.seed + 2048,
+      persistence: this.treeNoisePersistence,
+      scale: this.treeNoiseScale,
+    } as const;
+    const tRaw = this.noiseGenerator.sampleOctaves(tx, tz, treeNoiseOptions);
+    let amp = 1;
+    let ampSum = 0;
+    for (let index = 0; index < this.treeNoiseOctaves; index += 1) {
+      ampSum += amp;
+      amp *= this.treeNoisePersistence;
     }
+    const densityNormalized = Math.max(
+      0,
+      Math.min(1, (tRaw / (ampSum || 1) + 1) * 0.5),
+    );
+    let treeCount = 0;
+    if (densityNormalized > this.treeHighThreshold)
+      treeCount = Math.floor(this.maxTreesPerChunk);
+    const margin = this.cellSize;
+    for (let ti = 0; ti < treeCount; ti += 1) {
+      const rx =
+        Math.random() * (chunkPlaneWidth - margin * 2) -
+        (chunkPlaneWidth / 2 - margin);
+      const rz =
+        Math.random() * (chunkPlaneDepth - margin * 2) -
+        (chunkPlaneDepth / 2 - margin);
+      const worldX = centerX + rx;
+      const worldZ = centerZ + rz;
+      const y = sampleFromHeightData(worldX, worldZ);
+      if (y <= this.waterLevel + 12) continue;
+      const pickIndex =
+        Math.floor(Math.random() * this.baseTrees.length) %
+        this.baseTrees.length;
+      const prototype = this.baseTrees[pickIndex];
+      const treeClone = prototype.clone(true);
+      const scaleFactor = 0.6 + Math.random();
+      treeClone.scale.set(scaleFactor, scaleFactor, scaleFactor);
+      treeClone.position.set(worldX, y, worldZ);
+      objects.push(treeClone);
+    }
+    return objects;
+  }
 
-    // Place flowers (daisies + anemones) using noise + simple slope/water checks.
-    // This uses a different noise band so flower density differs from trees.
+  private generateFlowersForChunk(
+    centerX: number,
+    centerZ: number,
+    chunkPlaneWidth: number,
+    chunkPlaneDepth: number,
+    sampleFromHeightData: (x: number, z: number) => number,
+  ) {
+    const objects: THREE.Object3D[] = [];
     const flowerNoiseOptions = {
       lacunarity: this.lacunarity,
       octaves: 2,
       offsetZ: this.seed + 4096,
       persistence: 0.5,
       scale: this.flowerNoiseScale,
-    };
+    } as const;
     const fRaw = this.noiseGenerator.sampleOctaves(
       centerX / this.cellSize,
       centerZ / this.cellSize,
       flowerNoiseOptions,
     );
-    // Normalize amplitude sum for 2 octaves
     const ampSum = 1 + 0.5;
     const density = Math.max(0, Math.min(1, (fRaw / ampSum + 1) * 0.5));
     const flowersCount = Math.floor(density * this.maxDaisiesPerChunk);
     const flowerMargin = this.cellSize * 0.5;
+    const flowerConstructors: Array<new (s: number) => THREE.Object3D> = [
+      Daisy,
+      AnemoneFlower,
+      CrocusFlower,
+      DaffodilFlower,
+      DandelionFlower,
+      SnowdropFlower,
+      Rock,
+    ];
     for (let fi = 0; fi < flowersCount; fi += 1) {
       const rx =
         Math.random() * (chunkPlaneWidth - flowerMargin * 2) -
@@ -500,42 +609,17 @@ export class Terrain extends THREE.Group {
       const worldZ = centerZ + rz;
       const y = sampleFromHeightData(worldX, worldZ);
       if (y <= this.waterLevel + 12) continue;
-      // Simple slope test: sample a nearby point and require gentle slope
       const hNeighbor = sampleFromHeightData(worldX + this.cellSize, worldZ);
       const slope = Math.abs(hNeighbor - y) / this.cellSize;
       if (slope > 0.6) continue;
       const scaleFactor = 0.8 + Math.random() * 0.4;
-      // Randomly choose between Daisy, Anemone and Crocus
-      const flowerConstructors: Array<new (s: number) => THREE.Object3D> = [
-        Daisy,
-        AnemoneFlower,
-        CrocusFlower,
-        DaffodilFlower,
-        DandelionFlower,
-        SnowdropFlower,
-        Rock,
-      ];
       const pickIndex = Math.floor(Math.random() * flowerConstructors.length);
       const ChosenFlower = flowerConstructors[pickIndex];
       const flowerObject: THREE.Object3D = new ChosenFlower(scaleFactor);
       flowerObject.position.set(worldX, y, worldZ);
       objects.push(flowerObject);
     }
-
-    const key = Terrain.makeKey(cx, cz);
-    const entry: ChunkEntry = {
-      depth: cd,
-      grass,
-      heightData,
-      mesh,
-      objects,
-      offsetX,
-      offsetZ,
-      width: cw,
-    };
-    const chunk = new TerrainChunk(entry);
-    chunk.addTo(this);
-    this.chunks.set(key, chunk);
+    return objects;
   }
 
   private disposeChunk(cx: number, cz: number) {

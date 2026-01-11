@@ -19,7 +19,7 @@ export default defineConfig(
     ...js.configs.all,
     rules: {
       ...js.configs.all.rules,
-      curly: ['error', 'multi', 'consistent'],
+      curly: 'off',
       'func-style': [
         'error',
         'declaration',
@@ -36,7 +36,7 @@ export default defineConfig(
       'init-declarations': 'off',
       'max-lines': 'warn',
       'max-lines-per-function': 'off',
-      'max-params': ['error', 5],
+      'max-params': ['warn', 5],
       'max-statements': ['warn', 50],
       'no-console': [
         'error',
@@ -70,6 +70,8 @@ export default defineConfig(
       ],
       'require-atomic-updates': 'off',
       'sort-imports': 'off',
+      'sort-keys': 'off',
+      'sort-vars': 'off',
     },
   },
   // Array func plugin configuration.

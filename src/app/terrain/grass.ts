@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import type { SkyController } from '../sky/sky';
+import { grassFragmentSource, grassVertexSource } from './grass-shaders';
 
 function smoothStep(value: number, edge0: number, edge1: number) {
   let tv = (value - edge0) / (edge1 - edge0 || 1);
@@ -12,7 +13,6 @@ function smoothStep(value: number, edge0: number, edge1: number) {
 export class Grass {
   public mesh: THREE.LOD;
   private material: THREE.RawShaderMaterial;
-  private geometry: THREE.InstancedBufferGeometry;
   private width: number;
   // Squared distance beyond which the mesh is fully hidden (no CPU/GPU work)
   private cullDistanceSq: number;
@@ -259,11 +259,66 @@ export class Grass {
     const bladeWidth = 0.12;
     const bladeHeight = 1;
 
-    const instances = Math.max(0, bladeCount);
-
     Grass.ensureSharedResources(bladeWidth, bladeHeight);
 
-    // (base geometry already prepared above)
+    const { instancedGeometry, placedCount } = Grass.createInstancedGeometry({
+      bladeCount,
+      bladeHeight,
+      bladeWidth,
+      centerX,
+      centerZ,
+      sampleHeight,
+      waterLevel,
+      width,
+    });
+
+    const farBaseGeom = Grass.createFarBase(bladeWidth, bladeHeight);
+    const crossBaseGeom = Grass.createCrossBase(bladeWidth, bladeHeight);
+
+    this.material = Grass.ensureSharedMaterial(width);
+
+    this.mesh = this.buildLod({
+      crossBaseGeom,
+      farBaseGeom,
+      instancedGeometry,
+      placedCount,
+    });
+    this.mesh.position.set(centerX, 0, centerZ);
+    this.mesh.frustumCulled = true;
+
+    this.cullDistanceSq = 400 * 400;
+
+    this.mesh.onBeforeRender = () => {
+      const uniforms = this.material.uniforms as Record<
+        string,
+        { value: unknown }
+      >;
+      (uniforms.width.value as number) = this.width;
+    };
+  }
+
+  private static createInstancedGeometry(options: {
+    centerX: number;
+    centerZ: number;
+    width: number;
+    sampleHeight: (x: number, z: number) => number;
+    waterLevel: number;
+    bladeCount: number;
+    bladeWidth: number;
+    bladeHeight: number;
+  }) {
+    const {
+      centerX,
+      centerZ,
+      width,
+      sampleHeight,
+      waterLevel,
+      bladeCount,
+      bladeWidth,
+      bladeHeight,
+    } = options;
+
+    const instances = Math.max(0, bladeCount);
 
     const instancedGeometry = new THREE.InstancedBufferGeometry();
     const baseGeom = Grass.baseGeometry;
@@ -273,55 +328,23 @@ export class Grass {
     instancedGeometry.attributes.uv = baseGeom.attributes.uv;
     instancedGeometry.attributes.normal = baseGeom.attributes.normal;
 
-    // Per-instance attributes
     const indices = new Float32Array(instances);
     const offsets = new Float32Array(instances * 3);
     const scales = new Float32Array(instances);
     const halfRootAngles = new Float32Array(instances * 2);
 
-    let placedCount = 0;
-    // Fuzz settings for lower boundary
-    const cutoff = waterLevel + 12;
-    const fuzz = 12;
-    const fuzzHalf = fuzz * 0.5;
-    const instancesLocal = instances;
-    // Use top-level smoothStep helper defined above
-
-    for (let index = 0; index < instancesLocal; index++) {
-      indices[index] = index / instancesLocal;
-      const x = Math.random() * width - width / 2;
-      const z = Math.random() * width - width / 2;
-      const y = sampleHeight(centerX + x, centerZ + z);
-
-      // Use helper smoothStep declared above
-
-      // Deterministic position-based pseudo-noise in [0,1)
-      const posNoise = (() => {
-        const ax = centerX + x;
-        const bz = centerZ + z;
-        const noiseSeed = Math.sin(ax * 12.9898 + bz * 78.233) * 43_758;
-        return noiseSeed - Math.floor(noiseSeed);
-      })();
-
-      // Compute placement probability using smooth transition around cutoff
-      const placementProb = smoothStep(y, cutoff - fuzzHalf, cutoff + fuzzHalf);
-      // Blend with noise to make the border fuzzy
-      const place = posNoise < placementProb;
-
-      if (!place) continue;
-
-      const offsetBase = placedCount * 3;
-      offsets[offsetBase + 0] = x;
-      offsets[offsetBase + 1] = y;
-      offsets[offsetBase + 2] = z;
-      const angleRoot = Math.PI - Math.random() * (2 * Math.PI);
-      const halfBase = placedCount * 2;
-      halfRootAngles[halfBase + 0] = Math.sin(0.5 * angleRoot);
-      halfRootAngles[halfBase + 1] = Math.cos(0.5 * angleRoot);
-      scales[placedCount] =
-        index % 3 !== 0 ? 2 + Math.random() * 1.25 : 2 + Math.random();
-      placedCount++;
-    }
+    const placedCount = Grass.populateInstanceAttributes({
+      instances,
+      indices,
+      offsets,
+      scales,
+      halfRootAngles,
+      width,
+      centerX,
+      centerZ,
+      sampleHeight,
+      waterLevel,
+    });
 
     instancedGeometry.setAttribute(
       'offset',
@@ -345,199 +368,144 @@ export class Grass {
       'index',
       new THREE.InstancedBufferAttribute(indices, 1),
     );
-
-    // Only draw the number of instances actually placed (exclude dummies)
     instancedGeometry.instanceCount = placedCount;
 
-    // Compute conservative bounding sphere in O(1) by sampling a fixed
-    // Set of positions (corners, edges, center). This avoids iterating every
-    // Placed instance while remaining conservative for frustum culling.
     if (placedCount > 0) {
-      const halfW = width * 0.5;
-      const samples: Array<[number, number]> = [
-        [-halfW, -halfW],
-        [halfW, -halfW],
-        [-halfW, halfW],
-        [halfW, halfW],
-        [0, 0],
-        [-halfW, 0],
-        [halfW, 0],
-        [0, -halfW],
-        [0, halfW],
-      ];
-
-      let minY = Infinity;
-      let maxY = -Infinity;
-      for (let si = 0; si < samples.length; si += 1) {
-        const sx = centerX + samples[si][0];
-        const sz = centerZ + samples[si][1];
-        const sy = sampleHeight(sx, sz);
-        if (sy < minY) minY = sy;
-        if (sy > maxY) maxY = sy;
-      }
-
-      if (!Number.isFinite(minY)) minY = 0;
-      if (!Number.isFinite(maxY)) maxY = 0;
-
-      const minX = -halfW;
-      const maxX = halfW;
-      const minZ = -halfW;
-      const maxZ = halfW;
-      const cx = (minX + maxX) * 0.5;
-      const cy = (minY + maxY) * 0.5 + bladeHeight * 0.5;
-      const cz = (minZ + maxZ) * 0.5;
-      const dx = Math.max(Math.abs(minX - cx), Math.abs(maxX - cx));
-      const dz = Math.max(Math.abs(minZ - cz), Math.abs(maxZ - cz));
-      const dy = Math.max(Math.abs(minY - cy), Math.abs(maxY - cy));
-      let radius = Math.hypot(dx, dy, dz) + Math.hypot(bladeWidth, bladeHeight);
-      // Ensure bounding sphere isn't too small — use a conservative minimum
-      const minRadius = Math.hypot(halfW, bladeHeight) + 1;
-      if (radius < minRadius) radius = minRadius;
-      instancedGeometry.boundingSphere = new THREE.Sphere(
-        new THREE.Vector3(cx, cy, cz),
-        radius,
-      );
+      Grass.computeBoundingSphere(instancedGeometry, {
+        width,
+        bladeWidth,
+        bladeHeight,
+        centerX,
+        centerZ,
+        sampleHeight,
+      });
     }
-    // Create far and cross base geometries
-    const farBaseGeom = Grass.createFarBase(bladeWidth, bladeHeight);
-    const crossBaseGeom = Grass.createCrossBase(bladeWidth, bladeHeight);
-    const grassVertexSource = `
-precision lowp float;
-attribute vec3 position;
-attribute vec3 normal;
-attribute vec3 offset;
-attribute vec2 uv;
-attribute vec2 halfRootAngle;
-attribute float scale;
-attribute float index;
-uniform float time;
 
-uniform float width;
+    return { instancedGeometry, placedCount };
+  }
 
-uniform mat4 modelViewMatrix;
-uniform mat4 projectionMatrix;
-uniform mat4 modelMatrix;
-uniform vec3 cameraPosition;
-uniform float ambientStrength;
-uniform float diffuseStrength;
-uniform float specularStrength;
-uniform float translucencyStrength;
-uniform float shininess;
-uniform vec3 lightColour;
-uniform vec3 sunDirection;
+  private static populateInstanceAttributes(options: {
+    instances: number;
+    indices: Float32Array;
+    offsets: Float32Array;
+    scales: Float32Array;
+    halfRootAngles: Float32Array;
+    width: number;
+    centerX: number;
+    centerZ: number;
+    sampleHeight: (x: number, z: number) => number;
+    waterLevel: number;
+  }) {
+    const {
+      instances,
+      indices,
+      offsets,
+      scales,
+      halfRootAngles,
+      width,
+      centerX,
+      centerZ,
+      sampleHeight,
+      waterLevel,
+    } = options;
+    let placedCount = 0;
+    const cutoff = waterLevel + 12;
+    const fuzz = 12;
+    const fuzzHalf = fuzz * 0.5;
+    const instancesLocal = instances;
 
-varying vec2 vUv;
-varying vec3 vNormal;
-varying vec3 vPosition;
-varying float frc;
-varying float idx;
-varying vec3 vLightMul;
-varying vec3 vSpecular;
+    for (let index = 0; index < instancesLocal; index++) {
+      indices[index] = index / instancesLocal;
+      const x = Math.random() * width - width / 2;
+      const z = Math.random() * width - width / 2;
+      const y = sampleHeight(centerX + x, centerZ + z);
 
-const float PI = 3.1415;
-const float TWO_PI = 2.0 * PI;
+      const posNoise = (() => {
+        const ax = centerX + x;
+        const bz = centerZ + z;
+        const noiseSeed = Math.sin(ax * 12.9898 + bz * 78.233) * 43_758;
+        return noiseSeed - Math.floor(noiseSeed);
+      })();
 
-vec3 rotateVectorByQuaternion(vec3 v, vec4 q){
-  return 2.0 * cross(q.xyz, v * q.w + cross(q.xyz, v)) + v;
-}
+      const placementProb = smoothStep(y, cutoff - fuzzHalf, cutoff + fuzzHalf);
+      const place = posNoise < placementProb;
+      if (!place) continue;
 
-void main() {
+      const offsetBase = placedCount * 3;
+      offsets[offsetBase + 0] = x;
+      offsets[offsetBase + 1] = y;
+      offsets[offsetBase + 2] = z;
+      const angleRoot = Math.PI - Math.random() * (2 * Math.PI);
+      const halfBase = placedCount * 2;
+      halfRootAngles[halfBase + 0] = Math.sin(0.5 * angleRoot);
+      halfRootAngles[halfBase + 1] = Math.cos(0.5 * angleRoot);
+      scales[placedCount] =
+        index % 3 !== 0 ? 2 + Math.random() * 1.25 : 2 + Math.random();
+      placedCount++;
+    }
 
-  frc = position.y / float(1.0);
-  vec3 localPos = position;
-  localPos.y *= scale;
-  vec3 localNormal = normal;
-  localNormal.y /= scale;
+    return placedCount;
+  }
 
-  vec4 direction = vec4(0.0, halfRootAngle.x, 0.0, halfRootAngle.y);
-  localPos = rotateVectorByQuaternion(localPos, direction);
-  localNormal = rotateVectorByQuaternion(localNormal, direction);
-  vUv = uv;
+  private static computeBoundingSphere(
+    instancedGeometry: THREE.InstancedBufferGeometry,
+    options: {
+      width: number;
+      bladeWidth: number;
+      bladeHeight: number;
+      centerX: number;
+      centerZ: number;
+      sampleHeight: (x: number, z: number) => number;
+    },
+  ) {
+    const { width, bladeWidth, bladeHeight, centerX, centerZ, sampleHeight } =
+      options;
+    const halfW = width * 0.5;
+    const samples: Array<[number, number]> = [
+      [-halfW, -halfW],
+      [halfW, -halfW],
+      [-halfW, halfW],
+      [halfW, halfW],
+      [0, 0],
+      [-halfW, 0],
+      [halfW, 0],
+      [0, -halfW],
+      [0, halfW],
+    ];
 
-  // Place blade at instance offset (offset is local XYXZ relative to chunk center)
-  vec3 pos;
-  pos.x = offset.x;
-  pos.z = offset.z;
-  pos.y = offset.y;
+    let minY = Infinity;
+    let maxY = -Infinity;
+    for (let si = 0; si < samples.length; si += 1) {
+      const sx = centerX + samples[si][0];
+      const sz = centerZ + samples[si][1];
+      const sy = sampleHeight(sx, sz);
+      if (sy < minY) minY = sy;
+      if (sy > maxY) maxY = sy;
+    }
 
-  vec2 fractionalPos = 0.5 + offset.xz / width;
-  fractionalPos *= TWO_PI;
-  float noise = 0.5 + 0.5 * sin(fractionalPos.x + time);
-  float halfAngle = -noise * 0.1;
-  noise = 0.5 + 0.5 * cos(fractionalPos.y + time);
-  halfAngle -= noise * 0.05;
-  direction = normalize(vec4(sin(halfAngle), 0.0, -sin(halfAngle), cos(halfAngle)));
-  localPos = rotateVectorByQuaternion(localPos, direction);
-  localNormal = rotateVectorByQuaternion(localNormal, direction);
-  localPos += pos;
-  idx = index;
+    if (!Number.isFinite(minY)) minY = 0;
+    if (!Number.isFinite(maxY)) maxY = 0;
 
-  // compute world-space position & normal for lighting
-  vec4 worldPos4 = modelMatrix * vec4(localPos, 1.0);
-  vec3 worldPos = worldPos4.xyz;
-  vec3 worldNormal = normalize(mat3(modelMatrix) * localNormal);
+    const minX = -halfW;
+    const maxX = halfW;
+    const minZ = -halfW;
+    const maxZ = halfW;
+    const cx = (minX + maxX) * 0.5;
+    const cy = (minY + maxY) * 0.5 + bladeHeight * 0.5;
+    const cz = (minZ + maxZ) * 0.5;
+    const dx = Math.max(Math.abs(minX - cx), Math.abs(maxX - cx));
+    const dz = Math.max(Math.abs(minZ - cz), Math.abs(maxZ - cz));
+    const dy = Math.max(Math.abs(minY - cy), Math.abs(maxY - cy));
+    let radius = Math.hypot(dx, dy, dz) + Math.hypot(bladeWidth, bladeHeight);
+    const minRadius = Math.hypot(halfW, bladeHeight) + 1;
+    if (radius < minRadius) radius = minRadius;
+    instancedGeometry.boundingSphere = new THREE.Sphere(
+      new THREE.Vector3(cx, cy, cz),
+      radius,
+    );
+  }
 
-  // lighting calculations (Gouraud shading per-vertex)
-  vec3 lightDir = normalize(sunDirection);
-  float dotNormalLight = dot(worldNormal, lightDir);
-  float diff = max(dotNormalLight, 0.0);
-
-  vec3 diffuse = diff * lightColour * diffuseStrength;
-  float sky = max(dot(worldNormal, vec3(0,1,0)), 0.0);
-  vec3 skyLight = sky * vec3(0.12, 0.29, 0.55);
-
-  vec3 viewDirection = normalize(cameraPosition - worldPos);
-  vec3 halfwayDir = normalize(lightDir + viewDirection);
-  float spec = pow(max(dot(worldNormal, halfwayDir), 0.0), shininess);
-  vec3 specular = spec * vec3(specularStrength) * (lightColour * vec3(1.0));
-
-  vec3 diffuseTranslucency = vec3(0.0);
-  vec3 forwardTranslucency = vec3(0.0);
-  float dotViewLight = dot(-lightDir, viewDirection);
-  float back = step(dotNormalLight, 0.0);
-  diffuseTranslucency = lightColour * translucencyStrength * back * -dotNormalLight;
-  if(dotViewLight > 0.0) forwardTranslucency = lightColour * translucencyStrength * pow(dotViewLight, 16.0);
-
-  // Compose a multiplicative lighting term to be applied to the texture colour in the fragment
-  vLightMul = 0.3 * skyLight + vec3(ambientStrength) + diffuse + diffuseTranslucency + forwardTranslucency;
-  vSpecular = specular;
-
-  // assign varyings used in fragment
-  vNormal = localNormal;
-  vPosition = worldPos;
-
-  gl_Position = projectionMatrix * modelViewMatrix * vec4(localPos, 1.0);
-}
-`;
-
-    const grassFragmentSource = `
-precision lowp float;
-uniform vec3 cameraPosition;
-uniform sampler2D map;
-uniform sampler2D alphaMap;
-varying float frc;
-varying float idx;
-varying vec2 vUv;
-varying vec3 vNormal;
-varying vec3 vPosition;
-varying vec3 vLightMul;
-varying vec3 vSpecular;
-void main(){
-  float alpha = texture2D(alphaMap, vUv).r;
-  vec3 normal;
-  if(gl_FrontFacing) normal = normalize(vNormal); else normal = normalize(-vNormal);
-  vec3 textureColour = texture2D(map, vUv).rgb;
-  vec3 mixColour = idx > 0.75 ? vec3(0.35,0.55,0.20) : vec3(0.45,0.60,0.25);
-  textureColour = mix(0.1 * mixColour, textureColour, 0.6);
-
-  // Apply interpolated lighting from vertex shader
-  vec3 col = vLightMul * textureColour + vSpecular;
-
-  col = mix(0.35*vec3(0.1,0.25,0.02), col, frc);
-  gl_FragColor = vec4(col, alpha);
-}
-`;
-    // Create a single shared material for all grass chunks (shaders/textures reused)
+  private static ensureSharedMaterial(width: number) {
     let matLocal = Grass.sharedMaterial;
     if (!matLocal) {
       matLocal = new THREE.RawShaderMaterial({
@@ -565,34 +533,7 @@ void main(){
       Grass.sharedMaterial = matLocal;
     }
 
-    this.material = matLocal;
-
-    this.geometry = instancedGeometry;
-
-    this.mesh = this.buildLod({
-      crossBaseGeom,
-      farBaseGeom,
-      instancedGeometry,
-      placedCount,
-    });
-    this.mesh.position.set(centerX, 0, centerZ);
-    this.mesh.frustumCulled = true;
-
-    // Default squared cull distance (matches LOD bands used later).
-    // This hides the mesh entirely if the camera is farther than this.
-    // Avoids expensive CPU work per-frame for distant chunks.
-    this.cullDistanceSq = 400 * 400;
-
-    // Ensure per-mesh uniforms (like `width`) are set before render. Global
-    // Uniforms such as `time`, `cameraPosition`, and `sunDirection` are
-    // Updated once per frame via `Grass.updateGlobalUniforms`.
-    this.mesh.onBeforeRender = () => {
-      const uniforms = this.material.uniforms as Record<
-        string,
-        { value: unknown }
-      >;
-      (uniforms.width.value as number) = this.width;
-    };
+    return matLocal;
   }
 
   public update(cameraPos: THREE.Vector3) {
