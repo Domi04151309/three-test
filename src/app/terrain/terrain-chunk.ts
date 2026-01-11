@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { SimplifyModifier } from 'three/examples/jsm/modifiers/SimplifyModifier';
 import { Grass } from './grass/grass';
 
 export interface ChunkEntry {
@@ -12,8 +13,11 @@ export interface ChunkEntry {
   objects: THREE.Object3D[];
 }
 
+const modifier = new SimplifyModifier();
+
 export class TerrainChunk {
   public mesh: THREE.Mesh;
+  public lod: THREE.LOD;
   public heightData: Float32Array;
   public width: number;
   public depth: number;
@@ -24,6 +28,31 @@ export class TerrainChunk {
 
   constructor(entry: ChunkEntry) {
     this.mesh = entry.mesh;
+
+    // Wrap the existing mesh in a THREE.LOD. Do not modify the mesh itself.
+    this.lod = new THREE.LOD();
+    this.lod.addLevel(this.mesh, 0);
+    // Position the LOD at the chunk center and make the mesh local to it
+    const meshWorldPos = this.mesh.position.clone();
+    this.lod.position.copy(meshWorldPos);
+    this.mesh.position.set(0, 0, 0);
+    // Create additional simplified LOD levels from the original mesh using
+    // SimplifyModifier. Keep the original mesh untouched.
+    const posAttribute = this.mesh.geometry.attributes
+      .position as THREE.BufferAttribute;
+    const vertexCount = posAttribute.count;
+    const lodRatios = [0.8, 0.6, 0.4, 0.2];
+    const lodDistances = [160, 320, 480, 640];
+    for (let li = 0; li < lodRatios.length; li += 1) {
+      const ratio = lodRatios[li];
+      const target = Math.floor(vertexCount * (1 - ratio));
+      const simpleMesh = new THREE.Mesh(
+        modifier.modify(this.mesh.geometry.clone(), target),
+        this.mesh.material,
+      );
+      this.lod.addLevel(simpleMesh, lodDistances[li]);
+    }
+
     this.heightData = entry.heightData;
     this.width = entry.width;
     this.depth = entry.depth;
@@ -35,7 +64,7 @@ export class TerrainChunk {
 
   addTo(parent: THREE.Group) {
     parent.add(this.grass.mesh);
-    parent.add(this.mesh);
+    parent.add(this.lod);
     for (const object of this.objects) parent.add(object);
   }
 
@@ -53,6 +82,8 @@ export class TerrainChunk {
     const camPos = new THREE.Vector3();
     camera.getWorldPosition(camPos);
     this.grass.update(camPos);
+    // Ensure this chunk's LOD updates itself.
+    this.lod.update(camera);
     // Update any LOD objects in this chunk (including nested LODs)
     for (const object of this.objects)
       object.traverse((child) => {
@@ -61,7 +92,7 @@ export class TerrainChunk {
   }
 
   dispose(parent: THREE.Group) {
-    parent.remove(this.mesh);
+    parent.remove(this.lod);
     this.grass.dispose(parent);
 
     const disposeMaterial = (
@@ -103,6 +134,17 @@ export class TerrainChunk {
         meshObject.geometry.dispose();
         disposeMaterial(meshObject.material);
       });
+    }
+
+    // Dispose any simplified LOD geometries (but not the original mesh geometry yet)
+    const { levels } = this.lod;
+    for (const lvl of levels) {
+      const { object } = lvl;
+      if (object === this.mesh) continue;
+      if (object instanceof THREE.Mesh) {
+        const maybeGeom = object.geometry;
+        maybeGeom.dispose?.();
+      }
     }
 
     const geom = this.mesh.geometry;

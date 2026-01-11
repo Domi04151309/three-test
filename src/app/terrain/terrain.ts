@@ -43,7 +43,7 @@ export class Terrain extends THREE.Group {
     detailMax: number;
   };
   private noiseGenerator: NoiseGenerator;
-  private chunkRadius = 3;
+  private chunkRadius = 5;
   private waterLevel = 16;
   private skyController: SkyController;
   private treePoolSize = 8;
