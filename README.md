@@ -40,3 +40,9 @@ This repo is intentionally an AI-driven experiment. The goals:
 - See how far "vibe coding" can go using AI to create and assemble code. ✨
 - Iterate quickly and learn where human review is still required. 🔁
 - Share findings and patterns for future AI-assisted development. 🤖💡
+
+## Faithful Resource Pack
+
+This project includes textures from the Faithful Resource Pack. Credit goes to the Faithful team.
+
+**Website**: `https://faithfulpack.net/`
