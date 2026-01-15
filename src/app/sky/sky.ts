@@ -81,7 +81,7 @@ export class SkyController extends THREE.Group {
     waterNormals.wrapS = THREE.RepeatWrapping;
     waterNormals.wrapT = THREE.RepeatWrapping;
 
-    const waterGeom = new THREE.CircleGeometry(1024, 64);
+    const waterGeom = new THREE.CircleGeometry(2048, 64);
     const water = new Water(waterGeom, {
       distortionScale: 3.7,
       fog: true,
