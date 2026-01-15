@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import Stats from 'three/addons/libs/stats.module.js';
 import { createComposer } from './postprocessing';
-import { Player } from './player';
+import { Player } from './player/player';
 import { SkyController } from './sky/sky';
 import { Terrain } from './terrain/terrain';
 import { createRenderer } from './renderer';

@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockControls';
+import { createViewModel, ViewModelData } from './view-model';
+import { loadSwordForHand } from './sword-loader';
 
 export type PlayerOptions = {
   speed: number;
@@ -13,7 +15,6 @@ export class Player {
   public object: THREE.Object3D;
   private controls: PointerLockControls;
   private viewModel: THREE.Group;
-  private leftHand: THREE.Mesh;
   private rightHand: THREE.Mesh;
   private bobTime = 0;
   private baseViewPos: THREE.Vector3;
@@ -60,30 +61,19 @@ export class Player {
     this.object = this.controls.object;
 
     // Create a simple view-model (hands) and attach to the player/camera
-    this.viewModel = new THREE.Group();
-    const handGeom = new THREE.SphereGeometry(0.18, 16, 12);
-    const handMat = new THREE.MeshStandardMaterial({
-      color: '#ffdbac',
-      metalness: 0,
-      roughness: 0.8,
-    });
-    const leftHand = new THREE.Mesh(handGeom, handMat);
-    const rightHand = new THREE.Mesh(handGeom, handMat);
-    leftHand.scale.set(1, 1.3, 0.85);
-    rightHand.scale.set(1, 1.3, 0.85);
-    leftHand.position.set(-1, -0.6, -0.6);
-    rightHand.position.set(1, -0.6, -0.6);
-    this.viewModel.add(leftHand, rightHand);
-    this.leftHand = leftHand;
-    this.rightHand = rightHand;
-    this.baseRightHandPos = this.rightHand.position.clone();
-    this.baseRightHandRot = this.rightHand.rotation.clone();
-    this.viewModel.position.set(0, -0.2, -0.5);
+    const vm: ViewModelData = createViewModel();
+    this.viewModel = vm.viewModel;
+    this.rightHand = vm.rightHand;
+    this.baseRightHandPos = vm.baseRightHandPos;
+    this.baseRightHandRot = vm.baseRightHandRot;
     this.object.add(this.viewModel);
 
+    // Load and attach sword model to the right hand view-model
+    loadSwordForHand(this.rightHand).catch(console.error);
+
     // Cache base transforms for view-model bobbing
-    this.baseViewPos = this.viewModel.position.clone();
-    this.baseViewRot = this.viewModel.rotation.clone();
+    this.baseViewPos = vm.baseViewPos;
+    this.baseViewRot = vm.baseViewRot;
 
     this.velocity = new THREE.Vector3();
     this.direction = new THREE.Vector3();
