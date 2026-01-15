@@ -66,7 +66,7 @@ export class Terrain extends THREE.Group {
       treePrototype.generate();
       const treeLod = new THREE.LOD();
       treeLod.addLevel(treePrototype, 0);
-      treeLod.addLevel(new THREE.Object3D(), 320);
+      treeLod.addLevel(new THREE.Object3D(), 480);
       this.baseTrees.push(treeLod);
     }
     const sampleChunks = 4;
