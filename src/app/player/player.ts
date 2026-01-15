@@ -42,9 +42,9 @@ export class Player {
   private readonly minLevel = 16;
   private isPunching = false;
   private punchTime = 0;
-  private readonly punchDuration = 0.25;
-  private readonly punchDistance = 0.9;
-  private readonly punchRotX = -0.8;
+  private readonly punchDuration = 0.2;
+  private readonly swingPosOffset = new THREE.Vector3(-0.25, -0.08, -0.45);
+  private readonly swingRotOffset = new THREE.Euler(-1.2, 0.6, 0.4);
 
   constructor(
     camera: THREE.Camera,
@@ -237,19 +237,27 @@ export class Player {
     if (this.isPunching) {
       this.punchTime += delta;
       const time = Math.min(1, this.punchTime / this.punchDuration);
-      // Triangular progress: forward then back
-      const tri = time < 0.5 ? time / 0.5 : 1 - (time - 0.5) / 0.5;
-      const eased = Math.sin(tri * Math.PI * 0.5);
+      // Swing progress: 0 -> 1 -> 0 (peaks at mid-swing)
+      const swingProgress = Math.sin(time * Math.PI);
 
-      // Move hand forward along local z (more negative = forward)
-      const zOffset = -this.punchDistance * eased;
-      this.rightHand.position.z = this.baseRightHandPos.z + zOffset;
+      // Positional arc relative to the base hand position
+      this.rightHand.position.set(
+        this.baseRightHandPos.x + this.swingPosOffset.x * swingProgress,
+        this.baseRightHandPos.y + this.swingPosOffset.y * swingProgress,
+        this.baseRightHandPos.z + this.swingPosOffset.z * swingProgress,
+      );
+
+      // Rotational sweep relative to base rotation
       this.rightHand.rotation.x =
-        this.baseRightHandRot.x + this.punchRotX * eased;
+        this.baseRightHandRot.x + this.swingRotOffset.x * swingProgress;
+      this.rightHand.rotation.y =
+        this.baseRightHandRot.y + this.swingRotOffset.y * swingProgress;
+      this.rightHand.rotation.z =
+        this.baseRightHandRot.z + this.swingRotOffset.z * swingProgress;
 
       if (time >= 1) {
         this.isPunching = false;
-        // Return to base pose to ensure exact reset
+        // Ensure exact reset
         this.rightHand.position.copy(this.baseRightHandPos);
         this.rightHand.rotation.copy(this.baseRightHandRot);
       }
