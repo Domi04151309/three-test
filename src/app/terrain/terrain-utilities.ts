@@ -173,7 +173,7 @@ export function createNoiseMaterial(waterLevel: number) {
 
   const uniforms = THREE.UniformsUtils.merge([
     THREE.UniformsLib.fog,
-    baseUniforms as any,
+    baseUniforms,
   ]);
 
   const material = new THREE.ShaderMaterial({

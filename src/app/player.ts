@@ -159,8 +159,8 @@ export class Player {
     this.handleKey(event.code, false);
   };
 
-  private onMouseDown = (e: MouseEvent): void => {
-    if (e.button !== 0) return;
+  private onMouseDown = (event: MouseEvent): void => {
+    if (event.button !== 0) return;
     this.startPunch();
   };
 
@@ -244,13 +244,11 @@ export class Player {
   }
 
   applyPunch(delta: number): void {
-    if (!this.rightHand) return;
-
     if (this.isPunching) {
       this.punchTime += delta;
-      const t = Math.min(1, this.punchTime / this.punchDuration);
-      // triangular progress: forward then back
-      const tri = t < 0.5 ? t / 0.5 : 1 - (t - 0.5) / 0.5;
+      const time = Math.min(1, this.punchTime / this.punchDuration);
+      // Triangular progress: forward then back
+      const tri = time < 0.5 ? time / 0.5 : 1 - (time - 0.5) / 0.5;
       const eased = Math.sin(tri * Math.PI * 0.5);
 
       // Move hand forward along local z (more negative = forward)
@@ -259,9 +257,9 @@ export class Player {
       this.rightHand.rotation.x =
         this.baseRightHandRot.x + this.punchRotX * eased;
 
-      if (t >= 1) {
+      if (time >= 1) {
         this.isPunching = false;
-        // return to base pose to ensure exact reset
+        // Return to base pose to ensure exact reset
         this.rightHand.position.copy(this.baseRightHandPos);
         this.rightHand.rotation.copy(this.baseRightHandRot);
       }
