@@ -113,6 +113,11 @@ export function createNoiseMaterial(waterLevel: number) {
     varying float vNormalY;
     #include <fog_pars_fragment>
     uniform sampler2D noiseTex;
+    uniform sampler2D grassTex;
+    uniform sampler2D dirtTex;
+    uniform sampler2D rockTex;
+    uniform sampler2D sandTex;
+    uniform sampler2D snowTex;
     uniform vec3 grassColor;
     uniform vec3 dirtColor;
     uniform vec3 rockColor;
@@ -156,6 +161,11 @@ export function createNoiseMaterial(waterLevel: number) {
 
   const baseUniforms = {
     noiseTex: { value: noiseTex },
+    grassTex: { value: null },
+    dirtTex: { value: null },
+    rockTex: { value: null },
+    sandTex: { value: null },
+    snowTex: { value: null },
     grassColor: { value: new THREE.Color('hsl(80, 100%, 15%)') },
     dirtColor: { value: new THREE.Color('hsl(35, 30%, 30%)') },
     rockColor: { value: new THREE.Color('hsl(20, 0%, 40%)') },
@@ -170,6 +180,29 @@ export function createNoiseMaterial(waterLevel: number) {
     waterLevel: { value: waterLevel + 8 },
     snowLevel: { value: 256 },
   } as { [key: string]: { value: unknown } };
+
+  const loader = new THREE.TextureLoader();
+  const grassTex = loader.load(
+    '/src/assets/faithful/block/grass_block_top.png',
+  );
+  const dirtTex = loader.load('/src/assets/faithful/block/dirt.png');
+  const rockTex = loader.load('/src/assets/faithful/block/stone.png');
+  const sandTex = loader.load('/src/assets/faithful/block/sand.png');
+  const snowTex = loader.load('/src/assets/faithful/block/snow.png');
+  for (const texture of [grassTex, dirtTex, rockTex, sandTex, snowTex]) {
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.RepeatWrapping;
+    texture.generateMipmaps = false;
+    texture.minFilter = THREE.NearestFilter;
+    texture.magFilter = THREE.NearestFilter;
+    texture.repeat.set(4, 4);
+    texture.needsUpdate = true;
+  }
+  baseUniforms.grassTex.value = grassTex;
+  baseUniforms.dirtTex.value = dirtTex;
+  baseUniforms.rockTex.value = rockTex;
+  baseUniforms.sandTex.value = sandTex;
+  baseUniforms.snowTex.value = snowTex;
 
   const uniforms = THREE.UniformsUtils.merge([
     THREE.UniformsLib.fog,
