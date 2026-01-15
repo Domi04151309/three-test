@@ -70,10 +70,10 @@ export class SkyController extends THREE.Group {
   }
 
   private createClouds(): void {
-    const cloudCount = 12;
+    const cloudCount = 32;
     for (let index = 0; index < cloudCount; index += 1) {
-      const ox = SkyController.rand(-2000, 2000);
-      const oz = SkyController.rand(-2000, 2000);
+      const ox = SkyController.rand(-1024, 1024);
+      const oz = SkyController.rand(-1024, 1024);
       const oy = SkyController.rand(320, 460);
       const cloud = new Cloud.CloudVolume(new THREE.Vector3(ox, oy, oz));
       this.clouds.push(cloud);
