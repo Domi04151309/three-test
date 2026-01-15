@@ -8,6 +8,7 @@ import { DaffodilFlower } from './flowers/daffodil-flower';
 import { DandelionFlower } from './flowers/dandelion-flower';
 import { SnowdropFlower } from './flowers/snowdrop-flower';
 import { Rock } from './flowers/rock';
+import { TerrainOptions } from './terrain-options';
 
 export function makeSampleFromHeightData(options: {
   heightData: Float32Array;
@@ -45,13 +46,14 @@ export function makeSampleFromHeightData(options: {
   };
 }
 
-export function createGrassForChunk(options: {
-  centerX: number;
-  centerZ: number;
-  sample: (x: number, z: number) => number;
-  width: number;
-  waterLevel: number;
-}) {
+export function createGrassForChunk(
+  options: TerrainOptions & {
+    centerX: number;
+    centerZ: number;
+    sample: (x: number, z: number) => number;
+    width: number;
+  },
+) {
   return new Grass({
     bladeCount: 100_000,
     centerX: options.centerX,
@@ -62,23 +64,17 @@ export function createGrassForChunk(options: {
   });
 }
 
-export function generateTreesForChunk(options: {
-  baseTrees: THREE.LOD[];
-  centerX: number;
-  centerZ: number;
-  chunkPlaneWidth: number;
-  chunkPlaneDepth: number;
-  sampleFromHeightData: (x: number, z: number) => number;
-  cellSize: number;
-  noiseGenerator: NoiseGenerator;
-  lacunarity: number;
-  treeNoiseOctaves: number;
-  seed: number;
-  treeNoisePersistence: number;
-  treeNoiseScale: number;
-  maxTreesPerChunk: number;
-  waterLevel: number;
-}) {
+export function generateTreesForChunk(
+  options: TerrainOptions & {
+    baseTrees: THREE.LOD[];
+    centerX: number;
+    centerZ: number;
+    chunkPlaneWidth: number;
+    chunkPlaneDepth: number;
+    sampleFromHeightData: (x: number, z: number) => number;
+    noiseGenerator: NoiseGenerator;
+  },
+) {
   const objects: THREE.Object3D[] = [];
   if (options.baseTrees.length === 0) return objects;
   const tx = options.centerX / options.cellSize;
@@ -131,19 +127,16 @@ export function generateTreesForChunk(options: {
   return objects;
 }
 
-export function generateFlowersForChunk(options: {
-  centerX: number;
-  centerZ: number;
-  chunkPlaneWidth: number;
-  chunkPlaneDepth: number;
-  sampleFromHeightData: (x: number, z: number) => number;
-  cellSize: number;
-  waterLevel: number;
-  maxDaisiesPerChunk: number;
-  flowerNoiseScale: number;
-  noiseGenerator: NoiseGenerator;
-  seed: number;
-}) {
+export function generateFlowersForChunk(
+  options: TerrainOptions & {
+    centerX: number;
+    centerZ: number;
+    chunkPlaneWidth: number;
+    chunkPlaneDepth: number;
+    sampleFromHeightData: (x: number, z: number) => number;
+    noiseGenerator: NoiseGenerator;
+  },
+) {
   const objects: THREE.Object3D[] = [];
   const flowerNoiseOptions = {
     lacunarity: 2,

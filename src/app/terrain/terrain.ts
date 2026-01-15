@@ -4,35 +4,17 @@ import { Grass } from './grass/grass';
 import { NoiseGenerator } from './noise';
 import { SkyController } from '../sky/sky';
 import { Tree } from '@dgreenheck/ez-tree';
-import {
-  createChunkEntry,
-  ChunkFactoryParameters,
-  NoiseRanges,
-} from './terrain-chunk-factory';
+import { createChunkEntry, NoiseRanges } from './terrain-chunk-factory';
 import {
   computeNoiseRanges,
   getChunkNormalArray,
   mergeBorderNormals,
   makeKey,
 } from './terrain-utilities';
+import { terrainOptions, TerrainOptions } from './terrain-options';
 
 export class Terrain extends THREE.Group {
-  private chunkSize = 8;
-  private heightScale = 36;
-  private lacunarity = 2;
-  private seed = 42;
-  private elevationExponent = 1.6;
-  private hillNoiseScale = 0.008;
-  private detailNoiseScale = 0.06;
-  private hillOctaves = 5;
-  private detailOctaves = 5;
-  private hillPersistence = 0.65;
-  private detailPersistence = 0.5;
-  private hillAmplitude = 2;
-  private detailAmplitude = 0.9;
-  private flatThreshold = 0.35;
-  private flatBlend = 0.12;
-  private cellSize = 4096 / (200 - 1);
+  private options: TerrainOptions = terrainOptions;
   private lastChunkX?: number;
   private lastChunkZ?: number;
   private chunks: Map<string, TerrainChunk> = new Map();
@@ -43,24 +25,15 @@ export class Terrain extends THREE.Group {
     detailMax: number;
   };
   private noiseGenerator: NoiseGenerator;
-  private chunkRadius = 3;
-  private waterLevel = 16;
   private skyController: SkyController;
-  private treePoolSize = 8;
   private baseTrees: THREE.LOD[] = [];
-  private treeNoiseScale = 0.025;
-  private treeNoiseOctaves = 3;
-  private treeNoisePersistence = 0.55;
-  private maxTreesPerChunk = 16;
-  private maxDaisiesPerChunk = 48;
-  private flowerNoiseScale = 0.12;
 
   constructor(skyController: SkyController) {
     super();
     this.skyController = skyController;
     this.noiseGenerator = new NoiseGenerator();
     // Pre-generate a small pool of tree prototypes to clone per-chunk
-    for (let index = 0; index < this.treePoolSize; index += 1) {
+    for (let index = 0; index < this.options.treePoolSize; index += 1) {
       const treePrototype = new Tree();
       treePrototype.options.seed = Math.random() * 12_345;
       treePrototype.generate();
@@ -72,32 +45,27 @@ export class Terrain extends THREE.Group {
     const sampleChunks = 4;
     this.noiseRanges = computeNoiseRanges(
       this.noiseGenerator,
-      this.chunkSize * sampleChunks,
-      this.chunkSize * sampleChunks,
+      this.options.chunkSize * sampleChunks,
+      this.options.chunkSize * sampleChunks,
       {
-        lacunarity: this.lacunarity,
-        hillOctaves: this.hillOctaves,
-        detailOctaves: this.detailOctaves,
-        seed: this.seed,
-        hillPersistence: this.hillPersistence,
-        detailPersistence: this.detailPersistence,
-        hillNoiseScale: this.hillNoiseScale,
-        detailNoiseScale: this.detailNoiseScale,
+        lacunarity: this.options.lacunarity,
+        hillOctaves: this.options.hillOctaves,
+        detailOctaves: this.options.detailOctaves,
+        seed: this.options.seed,
+        hillPersistence: this.options.hillPersistence,
+        detailPersistence: this.options.detailPersistence,
+        hillNoiseScale: this.options.hillNoiseScale,
+        detailNoiseScale: this.options.detailNoiseScale,
       },
     );
 
     // Load an initial area around origin (player at 0,0)
     this.updateChunks(0, 0);
-    // With the new mapping, cell (0,0) sits at world position (0,0).
-    const gx0 = 0 / this.cellSize;
-    const gz0 = 0 / this.cellSize;
-    this.lastChunkX = Math.floor(gx0 / this.chunkSize);
-    this.lastChunkZ = Math.floor(gz0 / this.chunkSize);
   }
 
   private smoothChunkBorders() {
-    const cw = this.chunkSize + 1;
-    const cd = this.chunkSize + 1;
+    const cw = this.options.chunkSize + 1;
+    const cd = this.options.chunkSize + 1;
 
     for (const key of this.chunks.keys()) {
       const [cx, cz] = key.split(',').map(Number);
@@ -140,8 +108,8 @@ export class Terrain extends THREE.Group {
 
   private sampleCellHeight(ix: number, iz: number) {
     // Compute the chunk coordinates directly and perform a keyed lookup
-    const cx = Math.floor(ix / this.chunkSize);
-    const cz = Math.floor(iz / this.chunkSize);
+    const cx = Math.floor(ix / this.options.chunkSize);
+    const cz = Math.floor(iz / this.options.chunkSize);
     const key = makeKey(cx, cz);
     const chunk = this.chunks.get(key);
     if (!chunk) return 0;
@@ -149,33 +117,15 @@ export class Terrain extends THREE.Group {
   }
 
   private createChunk(cx: number, cz: number) {
-    const parameters: ChunkFactoryParameters = {
-      chunkSize: this.chunkSize,
-      cellSize: this.cellSize,
-      heightScale: this.heightScale,
-      waterLevel: this.waterLevel,
-      seed: this.seed,
-      lacunarity: this.lacunarity,
-      hillOctaves: this.hillOctaves,
-      detailOctaves: this.detailOctaves,
-      hillPersistence: this.hillPersistence,
-      detailPersistence: this.detailPersistence,
-      hillNoiseScale: this.hillNoiseScale,
-      detailNoiseScale: this.detailNoiseScale,
-      hillAmplitude: this.hillAmplitude,
-      detailAmplitude: this.detailAmplitude,
-      elevationExponent: this.elevationExponent,
-      flatThreshold: this.flatThreshold,
-      flatBlend: this.flatBlend,
+    const parameters: TerrainOptions & {
+      noiseGenerator: NoiseGenerator;
+      noiseRanges: NoiseRanges;
+      baseTrees: THREE.LOD[];
+    } = {
+      ...this.options,
       noiseGenerator: this.noiseGenerator,
       noiseRanges: this.noiseRanges as NoiseRanges,
       baseTrees: this.baseTrees,
-      treeNoiseOctaves: this.treeNoiseOctaves,
-      treeNoisePersistence: this.treeNoisePersistence,
-      treeNoiseScale: this.treeNoiseScale,
-      maxTreesPerChunk: this.maxTreesPerChunk,
-      maxDaisiesPerChunk: this.maxDaisiesPerChunk,
-      flowerNoiseScale: this.flowerNoiseScale,
     };
 
     const entry = createChunkEntry(cx, cz, parameters);
@@ -195,17 +145,17 @@ export class Terrain extends THREE.Group {
 
   public updateChunks(playerX: number, playerZ: number) {
     // Map world coordinates to grid cell coordinates (cell size units)
-    const gx = playerX / this.cellSize;
-    const gz = playerZ / this.cellSize;
-    const centerCX = Math.floor(gx / this.chunkSize);
-    const centerCZ = Math.floor(gz / this.chunkSize);
+    const gx = playerX / this.options.cellSize;
+    const gz = playerZ / this.options.cellSize;
+    const centerCX = Math.floor(gx / this.options.chunkSize);
+    const centerCZ = Math.floor(gz / this.options.chunkSize);
 
     const wanted = new Set<string>();
-    const side = this.chunkRadius * 2 + 1;
+    const side = this.options.chunkRadius * 2 + 1;
     const total = side * side;
     for (let index = 0; index < total; index += 1) {
-      const dx = (index % side) - this.chunkRadius;
-      const dz = Math.floor(index / side) - this.chunkRadius;
+      const dx = (index % side) - this.options.chunkRadius;
+      const dz = Math.floor(index / side) - this.options.chunkRadius;
       const cx = centerCX + dx;
       const cz = centerCZ + dz;
       const key = makeKey(cx, cz);
@@ -225,10 +175,10 @@ export class Terrain extends THREE.Group {
   }
 
   public updatePlayerPosition(position: THREE.Vector3) {
-    const gx = position.x / this.cellSize;
-    const gz = position.z / this.cellSize;
-    const cx = Math.floor(gx / this.chunkSize);
-    const cz = Math.floor(gz / this.chunkSize);
+    const gx = position.x / this.options.cellSize;
+    const gz = position.z / this.options.cellSize;
+    const cx = Math.floor(gx / this.options.chunkSize);
+    const cz = Math.floor(gz / this.options.chunkSize);
     if (this.lastChunkX !== cx || this.lastChunkZ !== cz) {
       this.lastChunkX = cx;
       this.lastChunkZ = cz;
@@ -238,8 +188,8 @@ export class Terrain extends THREE.Group {
 
   public getHeightAt(x: number, z: number) {
     // Map world coordinates to grid cell coordinates
-    const fx = x / this.cellSize;
-    const fz = z / this.cellSize;
+    const fx = x / this.options.cellSize;
+    const fz = z / this.options.cellSize;
     const ix = Math.floor(fx);
     const iz = Math.floor(fz);
     const tx = fx - ix;
@@ -250,10 +200,10 @@ export class Terrain extends THREE.Group {
     const ix2 = ix + 1;
     const iz2 = iz + 1;
 
-    const h11 = this.sampleCellHeight(ix1, iz1) * this.heightScale;
-    const h21 = this.sampleCellHeight(ix2, iz1) * this.heightScale;
-    const h12 = this.sampleCellHeight(ix1, iz2) * this.heightScale;
-    const h22 = this.sampleCellHeight(ix2, iz2) * this.heightScale;
+    const h11 = this.sampleCellHeight(ix1, iz1) * this.options.heightScale;
+    const h21 = this.sampleCellHeight(ix2, iz1) * this.options.heightScale;
+    const h12 = this.sampleCellHeight(ix1, iz2) * this.options.heightScale;
+    const h22 = this.sampleCellHeight(ix2, iz2) * this.options.heightScale;
 
     const h1 = h11 * (1 - tx) + h21 * tx;
     const h2 = h12 * (1 - tx) + h22 * tx;

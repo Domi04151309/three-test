@@ -12,6 +12,7 @@ import {
   createNoiseMaterial,
   smoothStep,
 } from './terrain-utilities';
+import { TerrainOptions } from './terrain-options';
 
 export type NoiseRanges = {
   hillMin: number;
@@ -19,38 +20,14 @@ export type NoiseRanges = {
   detailMin: number;
   detailMax: number;
 };
-export type ChunkFactoryParameters = {
-  chunkSize: number;
-  cellSize: number;
-  heightScale: number;
-  waterLevel: number;
-  seed: number;
-  lacunarity: number;
-  hillOctaves: number;
-  detailOctaves: number;
-  hillPersistence: number;
-  detailPersistence: number;
-  hillNoiseScale: number;
-  detailNoiseScale: number;
-  hillAmplitude: number;
-  detailAmplitude: number;
-  elevationExponent: number;
-  flatThreshold: number;
-  flatBlend: number;
-  noiseGenerator: NoiseGenerator;
-  noiseRanges: NoiseRanges;
-  baseTrees: THREE.LOD[];
-  treeNoiseOctaves: number;
-  treeNoisePersistence: number;
-  treeNoiseScale: number;
-  maxTreesPerChunk: number;
-  maxDaisiesPerChunk: number;
-  flowerNoiseScale: number;
-};
+
 export function generateHeight(
   width: number,
   depth: number,
-  parameters: ChunkFactoryParameters,
+  parameters: TerrainOptions & {
+    noiseGenerator: NoiseGenerator;
+    noiseRanges: NoiseRanges;
+  },
   offsetX = 0,
   offsetZ = 0,
 ) {
@@ -106,7 +83,11 @@ export function generateHeight(
 export function createChunkEntry(
   cx: number,
   cz: number,
-  parameters: ChunkFactoryParameters,
+  parameters: TerrainOptions & {
+    noiseGenerator: NoiseGenerator;
+    noiseRanges: NoiseRanges;
+    baseTrees: THREE.LOD[];
+  },
 ): ChunkEntry {
   const offsetX = cx * parameters.chunkSize;
   const offsetZ = cz * parameters.chunkSize;
@@ -145,43 +126,32 @@ export function createChunkEntry(
   });
 
   const grass = createGrassForChunk({
+    ...parameters,
     centerX,
     centerZ,
     sample: sampleFromHeightData,
     width: chunkPlaneWidth,
-    waterLevel: parameters.waterLevel,
   });
 
   const trees = generateTreesForChunk({
+    ...parameters,
     baseTrees: parameters.baseTrees,
     centerX,
     centerZ,
     chunkPlaneWidth,
     chunkPlaneDepth,
     sampleFromHeightData,
-    cellSize: parameters.cellSize,
     noiseGenerator: parameters.noiseGenerator,
-    lacunarity: parameters.lacunarity,
-    treeNoiseOctaves: parameters.treeNoiseOctaves,
-    seed: parameters.seed,
-    treeNoisePersistence: parameters.treeNoisePersistence,
-    treeNoiseScale: parameters.treeNoiseScale,
-    maxTreesPerChunk: parameters.maxTreesPerChunk,
-    waterLevel: parameters.waterLevel,
   });
 
   const flowers = generateFlowersForChunk({
+    ...parameters,
     centerX,
     centerZ,
     chunkPlaneWidth,
     chunkPlaneDepth,
     sampleFromHeightData,
-    cellSize: parameters.cellSize,
-    waterLevel: parameters.waterLevel,
-    maxDaisiesPerChunk: parameters.maxDaisiesPerChunk,
-    flowerNoiseScale: parameters.flowerNoiseScale,
     noiseGenerator: parameters.noiseGenerator,
-    seed: parameters.seed,
   });
 
   const objects = [...trees, ...flowers];
