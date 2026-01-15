@@ -150,10 +150,31 @@ export function createNoiseMaterial(waterLevel: number) {
       grassFactor = clamp(grassFactor - noiseInfluence * 0.5, 0.0, 1.0);
       dirtFactor = 1.0 - clamp(rockFactor + grassFactor, 0.0, 1.0);
       float isUnder = h < waterLevel ? 1.0 : 0.0;
-      vec3 grainGrass = mix(grassColor, sandColor, isUnder);
-      grainGrass = mix(grainGrass, snowColor, step(snowLevel, h));
 
-      vec3 col = rockFactor * rockColor + dirtFactor * dirtColor + grassFactor * grainGrass;
+      vec2 uv = vWorldPos.xz * 0.05;
+
+      vec4 tG = texture2D(grassTex, uv);
+      vec4 tD = texture2D(dirtTex, uv);
+      vec4 tR = texture2D(rockTex, uv);
+      vec4 tSa = texture2D(sandTex, uv);
+      vec4 tSn = texture2D(snowTex, uv);
+
+      float texGrass = dot(tG.rgb, vec3(0.2126, 0.7152, 0.0722));
+      float texDirt = dot(tD.rgb, vec3(0.2126, 0.7152, 0.0722));
+      float texRock = dot(tR.rgb, vec3(0.2126, 0.7152, 0.0722));
+      float texSand = dot(tSa.rgb, vec3(0.2126, 0.7152, 0.0722));
+      float texSnow = dot(tSn.rgb, vec3(0.2126, 0.7152, 0.0722));
+
+      vec3 finalGrass = grassColor * texGrass * 1.5;
+      vec3 finalSand  = sandColor * texSand * 1.5;
+      vec3 finalSnow  = snowColor * texSnow * 1.5;
+      vec3 finalDirt  = dirtColor * texDirt * 1.5;
+      vec3 finalRock  = rockColor * texRock * 1.5;
+
+      vec3 grainGrass = mix(finalGrass, finalSand, isUnder);
+      grainGrass = mix(grainGrass, finalSnow, step(snowLevel, h));
+
+      vec3 col = rockFactor * finalRock + dirtFactor * finalDirt + grassFactor * grainGrass;
       gl_FragColor = vec4(col, 1.0);
       #include <fog_fragment>
     }
@@ -195,7 +216,7 @@ export function createNoiseMaterial(waterLevel: number) {
     texture.generateMipmaps = false;
     texture.minFilter = THREE.NearestFilter;
     texture.magFilter = THREE.NearestFilter;
-    texture.repeat.set(4, 4);
+    texture.repeat.set(1, 1);
     texture.needsUpdate = true;
   }
   baseUniforms.grassTex.value = grassTex;
