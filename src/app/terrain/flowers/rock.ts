@@ -14,6 +14,7 @@ export class Rock extends Flower {
       modelScale: MODEL_SCALE,
       mtlFile: MTL_FILE,
       objectFile: OBJ_FILE,
+      rotateX: 0,
     }).catch(console.error);
   }
 }
