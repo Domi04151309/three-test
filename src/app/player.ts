@@ -13,9 +13,13 @@ export class Player {
   public object: THREE.Object3D;
   private controls: PointerLockControls;
   private viewModel: THREE.Group;
+  private leftHand: THREE.Mesh;
+  private rightHand: THREE.Mesh;
   private bobTime = 0;
   private baseViewPos: THREE.Vector3;
   private baseViewRot: THREE.Euler;
+  private baseRightHandPos: THREE.Vector3;
+  private baseRightHandRot: THREE.Euler;
   private velocity: THREE.Vector3;
   private direction: THREE.Vector3;
   private moveForward = false;
@@ -35,6 +39,11 @@ export class Player {
   private readonly bobAmpX = 0.02;
   private readonly bobRotZ = 0.03;
   private readonly minLevel = 16;
+  private isPunching = false;
+  private punchTime = 0;
+  private readonly punchDuration = 0.25;
+  private readonly punchDistance = 0.9;
+  private readonly punchRotX = -0.8;
 
   constructor(
     camera: THREE.Camera,
@@ -65,6 +74,10 @@ export class Player {
     leftHand.position.set(-1, -0.6, -0.6);
     rightHand.position.set(1, -0.6, -0.6);
     this.viewModel.add(leftHand, rightHand);
+    this.leftHand = leftHand;
+    this.rightHand = rightHand;
+    this.baseRightHandPos = this.rightHand.position.clone();
+    this.baseRightHandRot = this.rightHand.rotation.clone();
     this.viewModel.position.set(0, -0.2, -0.5);
     this.object.add(this.viewModel);
 
@@ -76,6 +89,8 @@ export class Player {
     this.direction = new THREE.Vector3();
 
     this.bindKeys();
+    // Bind mouse for punch action (left click)
+    domElement.addEventListener('mousedown', this.onMouseDown);
   }
 
   enablePointerLockUI(
@@ -144,6 +159,17 @@ export class Player {
     this.handleKey(event.code, false);
   };
 
+  private onMouseDown = (e: MouseEvent): void => {
+    if (e.button !== 0) return;
+    this.startPunch();
+  };
+
+  private startPunch(): void {
+    if (this.isPunching) return;
+    this.isPunching = true;
+    this.punchTime = 0;
+  }
+
   update(delta: number): void {
     // Damping
     this.velocity.x -= this.velocity.x * 10 * delta;
@@ -181,6 +207,7 @@ export class Player {
     }
 
     this.applyViewBobbing(delta);
+    this.applyPunch(delta);
   }
 
   applyViewBobbing(delta: number): void {
@@ -213,6 +240,46 @@ export class Player {
         (baseRot.y - this.viewModel.rotation.y) * Math.min(1, delta * 10);
       this.viewModel.rotation.z +=
         (baseRot.z - this.viewModel.rotation.z) * Math.min(1, delta * 10);
+    }
+  }
+
+  applyPunch(delta: number): void {
+    if (!this.rightHand) return;
+
+    if (this.isPunching) {
+      this.punchTime += delta;
+      const t = Math.min(1, this.punchTime / this.punchDuration);
+      // triangular progress: forward then back
+      const tri = t < 0.5 ? t / 0.5 : 1 - (t - 0.5) / 0.5;
+      const eased = Math.sin(tri * Math.PI * 0.5);
+
+      // Move hand forward along local z (more negative = forward)
+      const zOffset = -this.punchDistance * eased;
+      this.rightHand.position.z = this.baseRightHandPos.z + zOffset;
+      this.rightHand.rotation.x =
+        this.baseRightHandRot.x + this.punchRotX * eased;
+
+      if (t >= 1) {
+        this.isPunching = false;
+        // return to base pose to ensure exact reset
+        this.rightHand.position.copy(this.baseRightHandPos);
+        this.rightHand.rotation.copy(this.baseRightHandRot);
+      }
+    } else {
+      // Smoothly return to base
+      this.rightHand.position.lerp(
+        this.baseRightHandPos,
+        Math.min(1, delta * 10),
+      );
+      this.rightHand.rotation.x +=
+        (this.baseRightHandRot.x - this.rightHand.rotation.x) *
+        Math.min(1, delta * 10);
+      this.rightHand.rotation.y +=
+        (this.baseRightHandRot.y - this.rightHand.rotation.y) *
+        Math.min(1, delta * 10);
+      this.rightHand.rotation.z +=
+        (this.baseRightHandRot.z - this.rightHand.rotation.z) *
+        Math.min(1, delta * 10);
     }
   }
 }
