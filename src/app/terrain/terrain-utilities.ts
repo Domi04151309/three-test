@@ -75,7 +75,7 @@ export function smoothStep(value: number, edgeLo: number, edgeHi: number) {
   return tval * tval * (3 - 2 * tval);
 }
 
-export function createNoiseMaterial() {
+export function createNoiseMaterial(waterLevel: number) {
   const noiseSize = 256;
   const noiseData = new Uint8Array(noiseSize * noiseSize);
   for (let index = 0; index < noiseData.length; index += 1)
@@ -92,17 +92,85 @@ export function createNoiseMaterial() {
   noiseTex.magFilter = THREE.LinearFilter;
   noiseTex.repeat.set(8, 8);
   noiseTex.needsUpdate = true;
-  return new THREE.MeshPhysicalMaterial({
-    bumpMap: noiseTex,
-    bumpScale: 2,
-    color: new THREE.Color('#ffffff'),
-    envMapIntensity: 0,
-    metalness: 0,
-    roughness: 1,
-    specularColor: new THREE.Color('#000000'),
-    specularIntensity: 0,
-    vertexColors: true,
+
+  const vertexShader = `
+    varying vec3 vWorldPos;
+    varying float vNormalY;
+    void main() {
+      vNormalY = normalize(mat3(modelMatrix) * normal).y;
+      vec4 wp = modelMatrix * vec4(position, 1.0);
+      vWorldPos = wp.xyz;
+      gl_Position = projectionMatrix * viewMatrix * wp;
+    }
+  `;
+
+  const fragmentShader = `
+    precision lowp float;
+    varying vec3 vWorldPos;
+    varying float vNormalY;
+    uniform sampler2D noiseTex;
+    uniform vec3 grassColor;
+    uniform vec3 dirtColor;
+    uniform vec3 rockColor;
+    uniform float noiseScale;
+    uniform float noiseAmp;
+    uniform float slopeHigh;
+    uniform float slopeLow;
+    uniform float heightRockStart;
+    uniform float heightRockEnd;
+    uniform float waterLevel;
+    uniform vec3 sandColor;
+    uniform float snowLevel;
+    uniform vec3 snowColor;
+
+    void main() {
+      vec2 nUv = vWorldPos.xz * noiseScale;
+      float n = texture2D(noiseTex, fract(nUv)).r;
+      float h = vWorldPos.y + (n - 0.5) * noiseAmp;
+
+      float slope = 1.0 - vNormalY;
+      float rockFactor = smoothstep(slopeLow, 1.0, slope);
+      float grassFactor = smoothstep(slopeHigh, 1.0, vNormalY);
+      float dirtFactor = 1.0 - clamp(rockFactor + grassFactor, 0.0, 1.0);
+
+      float heightBias = smoothstep(heightRockStart, heightRockEnd, h);
+      rockFactor = clamp(rockFactor + heightBias * 0.6, 0.0, 1.0);
+
+      float noiseInfluence = (n - 0.5) * noiseAmp;
+      rockFactor = clamp(rockFactor + noiseInfluence * 0.5, 0.0, 1.0);
+      grassFactor = clamp(grassFactor - noiseInfluence * 0.5, 0.0, 1.0);
+      dirtFactor = 1.0 - clamp(rockFactor + grassFactor, 0.0, 1.0);
+      float isUnder = h < waterLevel ? 1.0 : 0.0;
+      vec3 grainGrass = mix(grassColor, sandColor, isUnder);
+      grainGrass = mix(grainGrass, snowColor, step(snowLevel, h));
+
+      vec3 col = rockFactor * rockColor + dirtFactor * dirtColor + grassFactor * grainGrass;
+      gl_FragColor = vec4(col, 1.0);
+    }
+  `;
+
+  const material = new THREE.ShaderMaterial({
+    vertexShader,
+    fragmentShader,
+    uniforms: {
+      noiseTex: { value: noiseTex },
+      grassColor: { value: new THREE.Color('hsl(80, 100%, 15%)') },
+      dirtColor: { value: new THREE.Color('hsl(35, 30%, 30%)') },
+      rockColor: { value: new THREE.Color('hsl(20, 0%, 40%)') },
+      sandColor: { value: new THREE.Color('hsl(40, 44%, 70%)') },
+      snowColor: { value: new THREE.Color('hsl(0, 0%, 95%)') },
+      noiseScale: { value: 0.02 },
+      noiseAmp: { value: 0.6 },
+      slopeHigh: { value: 0.5 },
+      slopeLow: { value: 0.5 },
+      heightRockStart: { value: 5 },
+      heightRockEnd: { value: 25 },
+      waterLevel: { value: waterLevel + 8 },
+      snowLevel: { value: 256 },
+    },
   });
+
+  return material;
 }
 
 export function buildGeometry(options: {
@@ -140,60 +208,6 @@ export function buildGeometry(options: {
   const centerX = (offsetX + (cw - 1) / 2) * cellSize;
   const centerZ = (offsetZ + (cd - 1) / 2) * cellSize;
   return { geometry, centerX, centerZ, chunkPlaneWidth, chunkPlaneDepth };
-}
-
-export function colorGeometry(options: {
-  geometry: THREE.BufferGeometry;
-  centerX: number;
-  centerZ: number;
-  cellSize: number;
-  waterLevel: number;
-  seed: number;
-  noiseGenerator: NoiseGenerator;
-}) {
-  const {
-    geometry,
-    centerX,
-    centerZ,
-    cellSize,
-    waterLevel,
-    seed,
-    noiseGenerator,
-  } = options;
-  const pos = geometry.attributes.position.array as Float32Array;
-  const vertCount = pos.length / 3;
-  const colors = new Float32Array(vertCount * 3);
-  const sand = new THREE.Color('hsl(40, 44%, 70%)');
-  const grassColor = new THREE.Color('hsl(80, 40%, 15%)');
-  const cutoff = waterLevel + 8;
-  const fuzz = 6;
-  const fuzzHalf = fuzz * 0.5;
-  const noiseAmp = 4;
-  const noiseOptions = {
-    lacunarity: 2,
-    octaves: 3,
-    offsetZ: seed + 1024,
-    persistence: 0.5,
-    scale: 0.02,
-  } as const;
-  const temporary = new THREE.Color();
-  for (let vi = 0; vi < vertCount; vi += 1) {
-    const y = pos[vi * 3 + 1];
-    const localX = pos[vi * 3 + 0];
-    const localZ = pos[vi * 3 + 2];
-    const worldX = centerX + localX;
-    const worldZ = centerZ + localZ;
-    const sx = worldX / cellSize;
-    const sz = worldZ / cellSize;
-    const noiseValue = noiseGenerator.sampleOctaves(sx, sz, noiseOptions);
-    const localCutoff = cutoff + noiseValue * noiseAmp;
-    const blend = smoothStep(y, localCutoff - fuzzHalf, localCutoff + fuzzHalf);
-    temporary.lerpColors(sand, grassColor, blend);
-    colors[vi * 3] = temporary.r;
-    colors[vi * 3 + 1] = temporary.g;
-    colors[vi * 3 + 2] = temporary.b;
-  }
-  geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3, false));
 }
 
 export function computeNoiseRanges(

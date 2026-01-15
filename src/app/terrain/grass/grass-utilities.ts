@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 
+const MAX_GRASS_HEIGHT = 256;
+
 export function populateInstanceAttributes(options: {
   instances: number;
   indices: Float32Array;
@@ -35,6 +37,9 @@ export function populateInstanceAttributes(options: {
     const x = Math.random() * width - width / 2;
     const z = Math.random() * width - width / 2;
     const y = sampleHeight(centerX + x, centerZ + z);
+
+    // Do not place grass above the configured maximum height.
+    if (y > MAX_GRASS_HEIGHT) continue;
 
     const posNoise = (() => {
       const ax = centerX + x;
@@ -102,7 +107,8 @@ export function computeBoundingSphere(
   for (let si = 0; si < samples.length; si++) {
     const sx = centerX + samples[si][0];
     const sz = centerZ + samples[si][1];
-    const sy = sampleHeight(sx, sz);
+    const syRaw = sampleHeight(sx, sz);
+    const sy = Math.min(syRaw, MAX_GRASS_HEIGHT);
     if (sy < minY) minY = sy;
     if (sy > maxY) maxY = sy;
   }

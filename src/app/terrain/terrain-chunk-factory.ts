@@ -9,7 +9,6 @@ import {
 } from './terrain-chunk-utilities';
 import {
   buildGeometry,
-  colorGeometry,
   createNoiseMaterial,
   smoothStep,
 } from './terrain-utilities';
@@ -131,17 +130,7 @@ export function createChunkEntry(
       heightScale: parameters.heightScale,
     });
 
-  colorGeometry({
-    geometry,
-    centerX,
-    centerZ,
-    cellSize: parameters.cellSize,
-    waterLevel: parameters.waterLevel,
-    seed: parameters.seed,
-    noiseGenerator: parameters.noiseGenerator,
-  });
-
-  const material = createNoiseMaterial();
+  const material = createNoiseMaterial(parameters.waterLevel);
   const mesh = new THREE.Mesh(geometry, material);
   mesh.position.set(centerX, 0, centerZ);
 
