@@ -11,7 +11,7 @@ export function startApp(container: HTMLDivElement): void {
   container.append(stats.dom);
 
   const scene = new THREE.Scene();
-  scene.fog = new THREE.FogExp2('#e0e0e0', 0.0025);
+  scene.fog = new THREE.Fog('#e0e0e0', 64, 1024);
 
   const camera = new THREE.PerspectiveCamera(
     75,

@@ -93,7 +93,7 @@ export class SkyController extends THREE.Group {
     const waterGeom = new THREE.CircleGeometry(1024, 64);
     const water = new Water(waterGeom, {
       distortionScale: 3.7,
-      fog: false,
+      fog: true,
       sunColor: new THREE.Color('white'),
       sunDirection: new THREE.Vector3(),
       textureHeight: 256,

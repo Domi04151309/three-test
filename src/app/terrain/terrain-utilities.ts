@@ -96,11 +96,14 @@ export function createNoiseMaterial(waterLevel: number) {
   const vertexShader = `
     varying vec3 vWorldPos;
     varying float vNormalY;
+    #include <fog_pars_vertex>
     void main() {
       vNormalY = normalize(mat3(modelMatrix) * normal).y;
       vec4 wp = modelMatrix * vec4(position, 1.0);
       vWorldPos = wp.xyz;
-      gl_Position = projectionMatrix * viewMatrix * wp;
+      vec4 mvPosition = viewMatrix * wp;
+      gl_Position = projectionMatrix * mvPosition;
+      #include <fog_vertex>
     }
   `;
 
@@ -108,6 +111,7 @@ export function createNoiseMaterial(waterLevel: number) {
     precision lowp float;
     varying vec3 vWorldPos;
     varying float vNormalY;
+    #include <fog_pars_fragment>
     uniform sampler2D noiseTex;
     uniform vec3 grassColor;
     uniform vec3 dirtColor;
@@ -146,28 +150,37 @@ export function createNoiseMaterial(waterLevel: number) {
 
       vec3 col = rockFactor * rockColor + dirtFactor * dirtColor + grassFactor * grainGrass;
       gl_FragColor = vec4(col, 1.0);
+      #include <fog_fragment>
     }
   `;
+
+  const baseUniforms = {
+    noiseTex: { value: noiseTex },
+    grassColor: { value: new THREE.Color('hsl(80, 100%, 15%)') },
+    dirtColor: { value: new THREE.Color('hsl(35, 30%, 30%)') },
+    rockColor: { value: new THREE.Color('hsl(20, 0%, 40%)') },
+    sandColor: { value: new THREE.Color('hsl(40, 44%, 70%)') },
+    snowColor: { value: new THREE.Color('hsl(0, 0%, 95%)') },
+    noiseScale: { value: 0.02 },
+    noiseAmp: { value: 0.6 },
+    slopeHigh: { value: 0.5 },
+    slopeLow: { value: 0.5 },
+    heightRockStart: { value: 5 },
+    heightRockEnd: { value: 25 },
+    waterLevel: { value: waterLevel + 8 },
+    snowLevel: { value: 256 },
+  } as { [key: string]: { value: unknown } };
+
+  const uniforms = THREE.UniformsUtils.merge([
+    THREE.UniformsLib.fog,
+    baseUniforms as any,
+  ]);
 
   const material = new THREE.ShaderMaterial({
     vertexShader,
     fragmentShader,
-    uniforms: {
-      noiseTex: { value: noiseTex },
-      grassColor: { value: new THREE.Color('hsl(80, 100%, 15%)') },
-      dirtColor: { value: new THREE.Color('hsl(35, 30%, 30%)') },
-      rockColor: { value: new THREE.Color('hsl(20, 0%, 40%)') },
-      sandColor: { value: new THREE.Color('hsl(40, 44%, 70%)') },
-      snowColor: { value: new THREE.Color('hsl(0, 0%, 95%)') },
-      noiseScale: { value: 0.02 },
-      noiseAmp: { value: 0.6 },
-      slopeHigh: { value: 0.5 },
-      slopeLow: { value: 0.5 },
-      heightRockStart: { value: 5 },
-      heightRockEnd: { value: 25 },
-      waterLevel: { value: waterLevel + 8 },
-      snowLevel: { value: 256 },
-    },
+    uniforms,
+    fog: true,
   });
 
   return material;
