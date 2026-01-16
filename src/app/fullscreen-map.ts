@@ -17,6 +17,7 @@ export class FullscreenMap {
   private canvas: HTMLCanvasElement;
   private context: CanvasRenderingContext2D;
   private backingRes = 1024;
+  private imageData: ImageData;
   private visible = false;
   private redrawNext = false;
 
@@ -33,6 +34,12 @@ export class FullscreenMap {
     const context = this.canvas.getContext('2d');
     if (!context) throw new Error('2D context unavailable');
     this.context = context;
+
+    // Pre-create an ImageData buffer to write pixels into directly.
+    this.imageData = this.context.createImageData(
+      this.backingRes,
+      this.backingRes,
+    );
 
     this.overlay.append(this.canvas);
     document.body.append(this.overlay);
@@ -76,6 +83,17 @@ export class FullscreenMap {
     half: number,
     cellSize: number,
   ) {
+    // Fast path: write directly into an ImageData buffer and blit once.
+    const { data } = this.imageData;
+    const wl = terrainOptions.waterLevel;
+
+    // Precomputed base colors (r,g,b) approximating the previous HSL choices.
+    const COLOR_SAND = [215, 180, 120];
+    const COLOR_WATER = [80, 130, 230];
+    const COLOR_SNOW = [242, 242, 242];
+    const COLOR_GRASS = [15, 80, 20];
+
+    let pixelIndex = 0;
     for (let y = 0; y < resolution; y++) {
       for (let x = 0; x < resolution; x++) {
         const localX = (x - half + 0.5) * cellSize;
@@ -84,26 +102,34 @@ export class FullscreenMap {
         const worldZ = playerPos.z + localZ;
 
         const height = this.terrain.getHeightAt(worldX, worldZ);
-        const wl = terrainOptions.waterLevel;
-        let color = 'hsl(40, 45%, 70%)';
-        if (height < wl) color = 'hsl(220, 70%, 60%)';
-        else if (height > 256) color = 'hsl(0, 0%, 95%)';
-        else if (height > wl + 8) color = 'hsl(80, 100%, 15%)';
 
-        this.context.fillStyle = color;
-        this.context.fillRect(x, y, 1, 1);
+        let [rValue, gValue, bValue] = COLOR_SAND;
+        if (height < wl) {
+          [rValue, gValue, bValue] = COLOR_WATER;
+        } else if (height > 256) {
+          [rValue, gValue, bValue] = COLOR_SNOW;
+        } else if (height > wl + 8) {
+          [rValue, gValue, bValue] = COLOR_GRASS;
+        }
+
         if (height > wl) {
           const overlayAlpha = FullscreenMap.overlayAlphaForHeight(height, wl);
           if (overlayAlpha > 0) {
-            const previousAlpha = this.context.globalAlpha;
-            this.context.globalAlpha = overlayAlpha;
-            this.context.fillStyle = '#000';
-            this.context.fillRect(x, y, 1, 1);
-            this.context.globalAlpha = previousAlpha;
+            const blendFactor = 1 - overlayAlpha;
+            rValue = Math.round(rValue * blendFactor);
+            gValue = Math.round(gValue * blendFactor);
+            bValue = Math.round(bValue * blendFactor);
           }
         }
+
+        data[pixelIndex++] = rValue;
+        data[pixelIndex++] = gValue;
+        data[pixelIndex++] = bValue;
+        data[pixelIndex++] = 255;
       }
     }
+
+    this.context.putImageData(this.imageData, 0, 0);
   }
 
   private renderMapObjects(
