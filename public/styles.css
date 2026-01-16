@@ -104,3 +104,30 @@ body,
   aspect-ratio: 1;
   border-radius: 6px;
 }
+
+/* Legend */
+#legend {
+  position: fixed;
+  bottom: 16px;
+  right: 16px;
+  color: #fff;
+  font-size: 14px;
+  list-style: none;
+  font-weight: bold;
+  text-align: right;
+  line-height: 2;
+  z-index: 1500;
+}
+
+/* Keyboard key styling for <kbd> elements */
+kbd {
+  display: inline-block;
+  padding: 0.1em 0.5em;
+  line-height: 1;
+  color: #000;
+  background: #fafafa;
+  margin-top: 4px;
+  border-bottom: 4px solid #bdbdbd;
+  border-radius: 6px;
+  vertical-align: middle;
+}
