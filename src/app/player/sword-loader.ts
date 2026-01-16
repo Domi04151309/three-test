@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader';
 
 export async function loadSwordForHand(rightHand: THREE.Mesh): Promise<void> {
-  const basePath = '/src/assets/models/sword/';
+  const basePath = 'models/sword/';
 
   const swordGroup = await new Promise<THREE.Group>((resolve, reject) => {
     const objectLoader = new OBJLoader();

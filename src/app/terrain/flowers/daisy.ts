@@ -1,6 +1,6 @@
 import { Flower } from './flower';
 
-const MODEL_PATH = '/src/assets/models/daisy/';
+const MODEL_PATH = 'models/daisy/';
 const MTL_FILE = '10441_Daisy_v1_max2010_iteration-2.mtl';
 const OBJ_FILE = '10441_Daisy_v1_max2010_iteration-2.obj';
 const MODEL_SCALE = 0.2;

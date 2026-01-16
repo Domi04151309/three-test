@@ -1,6 +1,6 @@
 import { Flower } from './flower';
 
-const MODEL_PATH = '/src/assets/models/daffodil_flower/';
+const MODEL_PATH = 'models/daffodil_flower/';
 const MTL_FILE = '12977_Daffodil_flower_v1_l2.mtl';
 const OBJ_FILE = '12977_Daffodil_flower_v1_l2.obj';
 const MODEL_SCALE = 0.3;

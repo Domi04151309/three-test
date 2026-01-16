@@ -1,6 +1,6 @@
 import { Flower } from './flower';
 
-const MODEL_PATH = '/src/assets/models/rock/';
+const MODEL_PATH = 'models/rock/';
 const MTL_FILE = 'Rock1.mtl';
 const OBJ_FILE = 'Rock1.obj';
 const MODEL_SCALE = 1;

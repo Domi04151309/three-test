@@ -6,5 +6,5 @@
     "no-descending-specificity": null,
     "property-no-vendor-prefix": null
   },
-  "ignoreFiles": ["out/**/*.*", "vendor/**/*.*"]
+  "ignoreFiles": ["dist/**/*.*"]
 }

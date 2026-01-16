@@ -66,7 +66,7 @@ export function ensureSharedResources(bladeWidth: number, bladeHeight: number) {
   if (!sharedGrassTexture) {
     const loader = new THREE.TextureLoader();
     loader.crossOrigin = '';
-    const grassTex = loader.load('/src/assets/models/grass/blade_diffuse.jpg');
+    const grassTex = loader.load('models/grass/blade_diffuse.jpg');
     grassTex.minFilter = THREE.LinearMipmapLinearFilter;
     grassTex.magFilter = THREE.LinearFilter;
     grassTex.anisotropy = 1;
@@ -75,7 +75,7 @@ export function ensureSharedResources(bladeWidth: number, bladeHeight: number) {
   if (!sharedAlphaMap) {
     const loader = new THREE.TextureLoader();
     loader.crossOrigin = '';
-    const alphaTex = loader.load('/src/assets/models/grass/blade_alpha.jpg');
+    const alphaTex = loader.load('models/grass/blade_alpha.jpg');
     alphaTex.minFilter = THREE.LinearMipmapLinearFilter;
     alphaTex.magFilter = THREE.LinearFilter;
     alphaTex.anisotropy = 1;

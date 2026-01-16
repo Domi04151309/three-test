@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "build": "vite build",
     "eslint": "eslint .",
     "lint": "npm run eslint && npm run tsc && npm run stylelint && npm run prettier",
     "prettier:check": "prettier . --check",

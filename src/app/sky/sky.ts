@@ -75,9 +75,7 @@ export class SkyController extends THREE.Group {
 
   private initWater(): void {
     const loader = new THREE.TextureLoader();
-    const waterNormals = loader.load(
-      '/src/assets/models/water/waternormals.jpg',
-    );
+    const waterNormals = loader.load('models/water/waternormals.jpg');
     waterNormals.wrapS = THREE.RepeatWrapping;
     waterNormals.wrapT = THREE.RepeatWrapping;
 

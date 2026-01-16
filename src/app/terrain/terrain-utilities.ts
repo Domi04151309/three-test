@@ -51,13 +51,11 @@ export function createNoiseMaterial(waterLevel: number) {
   } as { [key: string]: { value: unknown } };
 
   const loader = new THREE.TextureLoader();
-  const grassTex = loader.load(
-    '/src/assets/faithful/block/grass_block_top.png',
-  );
-  const dirtTex = loader.load('/src/assets/faithful/block/dirt.png');
-  const rockTex = loader.load('/src/assets/faithful/block/stone.png');
-  const sandTex = loader.load('/src/assets/faithful/block/sand.png');
-  const snowTex = loader.load('/src/assets/faithful/block/snow.png');
+  const grassTex = loader.load('faithful/block/grass_block_top.png');
+  const dirtTex = loader.load('faithful/block/dirt.png');
+  const rockTex = loader.load('faithful/block/stone.png');
+  const sandTex = loader.load('faithful/block/sand.png');
+  const snowTex = loader.load('faithful/block/snow.png');
   for (const texture of [grassTex, dirtTex, rockTex, sandTex, snowTex]) {
     texture.wrapS = THREE.RepeatWrapping;
     texture.wrapT = THREE.RepeatWrapping;

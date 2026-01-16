@@ -1,6 +1,6 @@
 import { Flower } from './flower';
 
-const MODEL_PATH = '/src/assets/models/crocus_flower/';
+const MODEL_PATH = 'models/crocus_flower/';
 const MTL_FILE = '12974_crocus_flower_v1_l3.mtl';
 const OBJ_FILE = '12974_crocus_flower_v1_l3.obj';
 const MODEL_SCALE = 0.1;
