@@ -6,6 +6,7 @@ import { SkyController } from './sky/sky';
 import { Terrain } from './terrain/terrain';
 import { createRenderer } from './renderer';
 import { Fireflies } from './effects/fireflies';
+import { Compass } from './compass';
 
 export function startApp(container: HTMLDivElement): void {
   const stats = new Stats();
@@ -49,6 +50,9 @@ export function startApp(container: HTMLDivElement): void {
   player.enablePointerLockUI(blocker, instructions);
   scene.add(player.object);
 
+  // Compass UI (top-center)
+  const compass = new Compass();
+
   // Fireflies (mesh-based spheres)
   const fireflies = new Fireflies({
     count: 8,
@@ -64,6 +68,7 @@ export function startApp(container: HTMLDivElement): void {
     const delta = clock.getDelta();
     skyController.update(camera, delta);
     player.update(delta);
+    compass.update(camera);
     terrain.updatePlayerPosition(player.object.position);
     terrain.update(camera, delta);
     fireflies.update(delta, player.object.position);

@@ -58,3 +58,20 @@ body,
 #crosshair::before {
   border-radius: 1px;
 }
+
+/* Compass at the top-center showing player heading */
+#compass {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: rgb(0 0 0 / 55%);
+  color: #fff;
+  padding: 6px 10px;
+  font-size: 14px;
+  border-radius: 6px;
+  z-index: 1500;
+  pointer-events: none;
+  font-family: system-ui;
+  letter-spacing: 0.6px;
+}
