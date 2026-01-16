@@ -5,12 +5,7 @@ import { NoiseGenerator } from './noise';
 import { SkyController } from '../sky/sky';
 import { Tree } from '@dgreenheck/ez-tree';
 import { createChunkEntry, NoiseRanges } from './terrain-chunk-factory';
-import {
-  computeNoiseRanges,
-  getChunkNormalArray,
-  mergeBorderNormals,
-  makeKey,
-} from './terrain-utilities';
+import { computeNoiseRanges, makeKey } from './terrain-utilities';
 import { terrainOptions, TerrainOptions } from './terrain-options';
 
 export class Terrain extends THREE.Group {
@@ -61,49 +56,6 @@ export class Terrain extends THREE.Group {
 
     // Load an initial area around origin (player at 0,0)
     this.updateChunks(0, 0);
-  }
-
-  private smoothChunkBorders() {
-    const cw = this.options.chunkSize + 1;
-    const cd = this.options.chunkSize + 1;
-
-    for (const key of this.chunks.keys()) {
-      const [cx, cz] = key.split(',').map(Number);
-      const chunk = this.chunks.get(key);
-      if (!chunk) continue;
-      const source = getChunkNormalArray(chunk);
-      if (!source) continue;
-
-      // Neighbor +X
-      const right = this.chunks.get(makeKey(cx + 1, cz));
-      const rightNormals = right ? getChunkNormalArray(right) : null;
-      if (rightNormals) {
-        mergeBorderNormals({
-          arrayA: source.array,
-          attributeA: source.attr,
-          arrayB: rightNormals.array,
-          attributeB: rightNormals.attr,
-          cw,
-          cd,
-          orientation: 'x',
-        });
-      }
-
-      // Neighbor +Z
-      const far = this.chunks.get(makeKey(cx, cz + 1));
-      const farNormals = far ? getChunkNormalArray(far) : null;
-      if (farNormals) {
-        mergeBorderNormals({
-          arrayA: source.array,
-          attributeA: source.attr,
-          arrayB: farNormals.array,
-          attributeB: farNormals.attr,
-          cw,
-          cd,
-          orientation: 'z',
-        });
-      }
-    }
   }
 
   private sampleCellHeight(ix: number, iz: number) {
@@ -169,9 +121,6 @@ export class Terrain extends THREE.Group {
         const [sx, sz] = key.split(',').map(Number);
         this.disposeChunk(sx, sz);
       }
-
-    // After creating/disposing chunks, smooth normals along chunk borders
-    this.smoothChunkBorders();
   }
 
   public updatePlayerPosition(position: THREE.Vector3) {
