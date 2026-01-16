@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockControls';
 import { createViewModel, ViewModelData } from './view-model';
-import { loadSwordForHand } from './sword-loader';
+import { Sword } from './items/sword';
 import { PlayerOptions } from './types';
 import { ViewBobbing } from './view-bobbing';
 import { PunchHandler } from './punch-handler';
@@ -24,8 +24,6 @@ export class Player {
   private canJump = false;
   private isSprinting = false;
   private readonly options: PlayerOptions;
-  private isPunching = false;
-  private punchTime = 0;
   private touchId: number | null = null;
   private lastTouchX = 0;
   private lastTouchY = 0;
@@ -48,7 +46,7 @@ export class Player {
     this.object.add(this.viewModel);
 
     // Load and attach sword model to the right hand view-model
-    loadSwordForHand(this.rightHand).catch(console.error);
+    Sword.createForHand(this.rightHand).catch(console.error);
 
     // Initialize helpers for view bobbing and punching
     this.viewBobbing = new ViewBobbing(
