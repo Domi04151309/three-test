@@ -165,4 +165,26 @@ export class Terrain extends THREE.Group {
     Grass.updateGlobalUniforms(delta, camPos, this.skyController);
     for (const ch of this.chunks.values()) ch.update(camera);
   }
+
+  public getMapObjects(): Array<{
+    x: number;
+    y: number;
+    z: number;
+    type: 'tree' | 'flower';
+  }> {
+    const out: Array<{
+      x: number;
+      y: number;
+      z: number;
+      type: 'tree' | 'flower';
+    }> = [];
+    for (const chunk of this.chunks.values()) {
+      for (const object of chunk.objects) {
+        const pos = object.position;
+        const type = object instanceof THREE.LOD ? 'tree' : 'flower';
+        out.push({ x: pos.x, y: pos.y, z: pos.z, type });
+      }
+    }
+    return out;
+  }
 }

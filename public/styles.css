@@ -88,3 +88,19 @@ body,
   right: 8px;
   z-index: 1500;
 }
+
+/* Map */
+#map {
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 1500;
+}
+
+#map canvas {
+  height: 80%;
+  aspect-ratio: 1;
+  border-radius: 6px;
+}

@@ -8,6 +8,7 @@ import { createRenderer } from './renderer';
 import { Fireflies } from './effects/fireflies';
 import { Compass } from './compass';
 import { PositionDisplay } from './position';
+import { FullscreenMap } from './fullscreen-map';
 
 export function startApp(container: HTMLDivElement): void {
   const stats = new Stats();
@@ -67,6 +68,7 @@ export function startApp(container: HTMLDivElement): void {
   // Compass UI (top-center)
   const compass = new Compass();
   const positionDisplay = new PositionDisplay();
+  const fullmap = new FullscreenMap(terrain);
 
   // Fireflies (mesh-based spheres)
   const fireflies = new Fireflies({
@@ -87,6 +89,7 @@ export function startApp(container: HTMLDivElement): void {
     positionDisplay.update(player.object.position);
     terrain.updatePlayerPosition(player.object.position);
     terrain.update(camera, delta);
+    fullmap.update(player.object.position, camera);
     fireflies.update(delta, player.object.position);
     composer.render();
     stats.update();

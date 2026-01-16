@@ -38,7 +38,7 @@ export function createNoiseMaterial(waterLevel: number) {
     grassColor: { value: new THREE.Color('hsl(80, 100%, 15%)') },
     dirtColor: { value: new THREE.Color('hsl(35, 30%, 30%)') },
     rockColor: { value: new THREE.Color('hsl(20, 0%, 40%)') },
-    sandColor: { value: new THREE.Color('hsl(40, 44%, 70%)') },
+    sandColor: { value: new THREE.Color('hsl(40, 45%, 70%)') },
     snowColor: { value: new THREE.Color('hsl(0, 0%, 95%)') },
     noiseScale: { value: 0.02 },
     noiseAmp: { value: 0.6 },
