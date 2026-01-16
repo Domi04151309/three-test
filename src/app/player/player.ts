@@ -161,11 +161,15 @@ export class Player {
   }
 
   update(delta: number): void {
-    // Damping
-    this.velocity.x -= this.velocity.x * 10 * delta;
-    this.velocity.z -= this.velocity.z * 10 * delta;
+    // Bound delta to avoid unstable physics/integration on long frames
+    const dt = Math.min(delta, 0.05);
+
+    // Damping (use exponential-style damping for stability)
+    const damping = Math.exp(-10 * dt);
+    this.velocity.x *= damping;
+    this.velocity.z *= damping;
     // Gravity
-    this.velocity.y -= this.gravity * delta;
+    this.velocity.y -= this.gravity * dt;
 
     this.direction.z = Number(this.moveForward) - Number(this.moveBackward);
     this.direction.x = Number(this.moveRight) - Number(this.moveLeft);
@@ -174,16 +178,16 @@ export class Player {
     const moveSpeed =
       this.speed * (this.isSprinting ? this.sprintMultiplier : 1);
     if (this.moveForward || this.moveBackward)
-      this.velocity.z -= this.direction.z * moveSpeed * delta;
+      this.velocity.z -= this.direction.z * moveSpeed * dt;
     if (this.moveLeft || this.moveRight)
-      this.velocity.x -= this.direction.x * moveSpeed * delta;
+      this.velocity.x -= this.direction.x * moveSpeed * dt;
 
     // Move controls
-    this.controls.moveRight(-this.velocity.x * delta);
-    this.controls.moveForward(-this.velocity.z * delta);
+    this.controls.moveRight(-this.velocity.x * dt);
+    this.controls.moveForward(-this.velocity.z * dt);
 
     // Apply vertical motion
-    this.object.position.y += this.velocity.y * delta;
+    this.object.position.y += this.velocity.y * dt;
 
     const groundY = Math.max(
       this.minLevel,
@@ -196,8 +200,8 @@ export class Player {
       this.canJump = true;
     }
 
-    this.applyViewBobbing(delta);
-    this.applyPunch(delta);
+    this.applyViewBobbing(dt);
+    this.applyPunch(dt);
   }
 
   applyViewBobbing(delta: number): void {
