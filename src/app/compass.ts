@@ -8,6 +8,7 @@ function degToCardinal(deg: number): string {
 
 export class Compass {
   private element: HTMLDivElement;
+  private previousText: string = '';
 
   constructor() {
     this.element = document.createElement('div');
@@ -24,6 +25,11 @@ export class Compass {
     const rad = Math.atan2(direction.x, direction.z);
     const deg = (rad * (180 / Math.PI) + 360) % 360;
     const card = degToCardinal(deg);
-    this.element.textContent = `${card} ${Math.round(deg).toString()}°`;
+
+    const text = `${card} ${Math.round(deg).toString()}°`;
+    if (text !== this.previousText) {
+      this.previousText = text;
+      this.element.textContent = text;
+    }
   }
 }

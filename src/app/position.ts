@@ -2,6 +2,7 @@ import * as THREE from 'three';
 
 export class PositionDisplay {
   private element: HTMLDivElement;
+  private previousText: string = '';
 
   constructor() {
     this.element = document.createElement('div');
@@ -12,6 +13,10 @@ export class PositionDisplay {
   }
 
   update(pos: THREE.Vector3): void {
-    this.element.textContent = `x: ${pos.x.toFixed(0)} y: ${pos.y.toFixed(0)} z: ${pos.z.toFixed(0)}`;
+    const text = `x: ${pos.x.toFixed(0)} y: ${pos.y.toFixed(0)} z: ${pos.z.toFixed(0)}`;
+    if (text !== this.previousText) {
+      this.previousText = text;
+      this.element.textContent = text;
+    }
   }
 }
