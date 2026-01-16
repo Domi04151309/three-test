@@ -14,6 +14,8 @@ export type PlayerOptions = {
 export class Player {
   public object: THREE.Object3D;
   private controls: PointerLockControls;
+  private camera: THREE.Camera;
+  private blocker: HTMLElement | null = null;
   private viewModel: THREE.Group;
   private rightHand: THREE.Mesh;
   private bobTime = 0;
@@ -45,12 +47,19 @@ export class Player {
   private readonly punchDuration = 0.2;
   private readonly swingPosOffset = new THREE.Vector3(-0.25, -0.08, -0.45);
   private readonly swingRotOffset = new THREE.Euler(-1.2, 0.6, 0.4);
+  // Touch-look state
+  private touchId: number | null = null;
+  private lastTouchX = 0;
+  private lastTouchY = 0;
+  private readonly touchSensitivity = 0.0025;
 
   constructor(
     camera: THREE.Camera,
     domElement: HTMLElement,
     options: PlayerOptions,
   ) {
+    this.camera = camera;
+    this.camera.rotation.order = 'YXZ';
     this.speed = options.speed;
     this.gravity = options.gravity * 10;
     this.jumpVelocity = options.jumpVelocity * 20;
@@ -81,12 +90,23 @@ export class Player {
     this.bindKeys();
     // Bind mouse for punch action (left click)
     domElement.addEventListener('mousedown', this.onMouseDown);
+    // Touch look handlers (single-touch to look around)
+    domElement.addEventListener('touchstart', this.onTouchStart, {
+      passive: false,
+    });
+    domElement.addEventListener('touchmove', this.onTouchMove, {
+      passive: false,
+    });
+    domElement.addEventListener('touchend', this.onTouchEnd);
+    domElement.addEventListener('touchcancel', this.onTouchEnd);
   }
 
   enablePointerLockUI(
     blocker: HTMLElement | null,
     instructions: HTMLElement | null,
   ): void {
+    this.blocker = blocker;
+
     if (instructions)
       instructions.addEventListener('click', () => {
         this.controls.lock();
@@ -152,6 +172,67 @@ export class Player {
   private onMouseDown = (event: MouseEvent): void => {
     if (event.button !== 0) return;
     this.startPunch();
+  };
+
+  private onTouchStart = (event: TouchEvent): void => {
+    if (event.touches.length !== 1) return;
+
+    const [touch] = event.touches;
+    this.touchId = touch.identifier;
+    this.lastTouchX = touch.clientX;
+    this.lastTouchY = touch.clientY;
+
+    // Hide blocker UI immediately when user starts using touch controls
+    if (this.blocker) this.blocker.style.display = 'none';
+
+    event.preventDefault();
+  };
+
+  private onTouchMove = (event: TouchEvent): void => {
+    if (this.touchId === null) return;
+    // Find the tracked touch
+    let touch: Touch | null = null;
+    for (let index = 0; index < event.touches.length; index++) {
+      const tt = event.touches.item(index);
+      if (tt && tt.identifier === this.touchId) {
+        touch = tt;
+        break;
+      }
+    }
+    if (!touch) return;
+
+    const dx = touch.clientX - this.lastTouchX;
+    const dy = touch.clientY - this.lastTouchY;
+    this.lastTouchX = touch.clientX;
+    this.lastTouchY = touch.clientY;
+
+    const yawObject = this.controls.object;
+    // Update yaw (around Y axis)
+    yawObject.rotation.y -= dx * this.touchSensitivity;
+
+    // Update pitch (camera x rotation), clamp to [-PI/2, PI/2]
+    const cam = this.camera;
+    const maxPitch = Math.PI / 2 - 0.01;
+    const minPitch = -maxPitch;
+    const updatedPitch = cam.rotation.x - dy * this.touchSensitivity;
+    cam.rotation.x = Math.max(minPitch, Math.min(maxPitch, updatedPitch));
+    cam.rotation.z = 0;
+
+    event.preventDefault();
+  };
+
+  private onTouchEnd = (event: TouchEvent): void => {
+    // If the tracked touch ended, clear tracking
+    if (this.touchId === null) return;
+    let stillActive = false;
+    for (let index = 0; index < event.touches.length; index++) {
+      const tt = event.touches.item(index);
+      if (tt && tt.identifier === this.touchId) {
+        stillActive = true;
+        break;
+      }
+    }
+    if (!stillActive) this.touchId = null;
   };
 
   private startPunch(): void {
