@@ -5,6 +5,7 @@ import { Player } from './player/player';
 import { SkyController } from './sky/sky';
 import { Terrain } from './terrain/terrain';
 import { createRenderer } from './renderer';
+import { Fireflies } from './effects/fireflies';
 
 export function startApp(container: HTMLDivElement): void {
   const stats = new Stats();
@@ -48,6 +49,15 @@ export function startApp(container: HTMLDivElement): void {
   player.enablePointerLockUI(blocker, instructions);
   scene.add(player.object);
 
+  // Fireflies (mesh-based spheres)
+  const fireflies = new Fireflies({
+    count: 8,
+    maxDistance: 24,
+    minDistance: 8,
+  });
+  scene.add(fireflies);
+  fireflies.initialize(player.object.position);
+
   const clock = new THREE.Clock();
 
   renderer.setAnimationLoop(() => {
@@ -56,6 +66,7 @@ export function startApp(container: HTMLDivElement): void {
     player.update(delta);
     terrain.updatePlayerPosition(player.object.position);
     terrain.update(camera, delta);
+    fireflies.update(delta, player.object.position);
     composer.render();
     stats.update();
   });
