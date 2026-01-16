@@ -2,14 +2,9 @@ import * as THREE from 'three';
 import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockControls';
 import { createViewModel, ViewModelData } from './view-model';
 import { loadSwordForHand } from './sword-loader';
-
-export type PlayerOptions = {
-  speed: number;
-  gravity: number;
-  jumpVelocity: number;
-  height: number;
-  ground: (x: number, z: number) => number;
-};
+import { PlayerOptions } from './types';
+import { ViewBobbing } from './view-bobbing';
+import { PunchHandler } from './punch-handler';
 
 export class Player {
   public object: THREE.Object3D;
@@ -18,11 +13,8 @@ export class Player {
   private blocker: HTMLElement | null = null;
   private viewModel: THREE.Group;
   private rightHand: THREE.Mesh;
-  private bobTime = 0;
-  private baseViewPos: THREE.Vector3;
-  private baseViewRot: THREE.Euler;
-  private baseRightHandPos: THREE.Vector3;
-  private baseRightHandRot: THREE.Euler;
+  private viewBobbing: ViewBobbing;
+  private punchHandler: PunchHandler;
   private velocity: THREE.Vector3;
   private direction: THREE.Vector3;
   private moveForward = false;
@@ -31,27 +23,12 @@ export class Player {
   private moveRight = false;
   private canJump = false;
   private isSprinting = false;
-  private readonly speed: number;
-  private readonly gravity: number;
-  private readonly jumpVelocity: number;
-  private readonly height: number;
-  private readonly groundFn: (x: number, z: number) => number;
-  private readonly sprintMultiplier = 10;
-  private readonly bobFreq = 8;
-  private readonly bobAmpY = 0.03;
-  private readonly bobAmpX = 0.02;
-  private readonly bobRotZ = 0.03;
-  private readonly minLevel = 16;
+  private readonly options: PlayerOptions;
   private isPunching = false;
   private punchTime = 0;
-  private readonly punchDuration = 0.2;
-  private readonly swingPosOffset = new THREE.Vector3(-0.25, -0.08, -0.45);
-  private readonly swingRotOffset = new THREE.Euler(-1.2, 0.6, 0.4);
-  // Touch-look state
   private touchId: number | null = null;
   private lastTouchX = 0;
   private lastTouchY = 0;
-  private readonly touchSensitivity = 0.0025;
 
   constructor(
     camera: THREE.Camera,
@@ -60,12 +37,7 @@ export class Player {
   ) {
     this.camera = camera;
     this.camera.rotation.order = 'YXZ';
-    this.speed = options.speed;
-    this.gravity = options.gravity * 10;
-    this.jumpVelocity = options.jumpVelocity * 20;
-    this.height = options.height * 10;
-    this.groundFn = options.ground;
-
+    this.options = options;
     this.controls = new PointerLockControls(camera, domElement);
     this.object = this.controls.object;
 
@@ -73,16 +45,24 @@ export class Player {
     const vm: ViewModelData = createViewModel();
     this.viewModel = vm.viewModel;
     this.rightHand = vm.rightHand;
-    this.baseRightHandPos = vm.baseRightHandPos;
-    this.baseRightHandRot = vm.baseRightHandRot;
     this.object.add(this.viewModel);
 
     // Load and attach sword model to the right hand view-model
     loadSwordForHand(this.rightHand).catch(console.error);
 
-    // Cache base transforms for view-model bobbing
-    this.baseViewPos = vm.baseViewPos;
-    this.baseViewRot = vm.baseViewRot;
+    // Initialize helpers for view bobbing and punching
+    this.viewBobbing = new ViewBobbing(
+      this.viewModel,
+      vm.baseViewPos,
+      vm.baseViewRot,
+      options,
+    );
+    this.punchHandler = new PunchHandler(
+      this.rightHand,
+      vm.baseRightHandPos,
+      vm.baseRightHandRot,
+      options,
+    );
 
     this.velocity = new THREE.Vector3();
     this.direction = new THREE.Vector3();
@@ -147,8 +127,9 @@ export class Player {
       case 'Space':
         if (down && this.canJump) {
           this.velocity.y +=
-            this.jumpVelocity *
-            (this.isSprinting ? this.sprintMultiplier / 2 : 1);
+            this.options.jumpVelocity *
+            this.options.jumpScale *
+            (this.isSprinting ? this.options.sprintMultiplier / 2 : 1);
           this.canJump = false;
         }
         break;
@@ -208,13 +189,13 @@ export class Player {
 
     const yawObject = this.controls.object;
     // Update yaw (around Y axis)
-    yawObject.rotation.y -= dx * this.touchSensitivity;
+    yawObject.rotation.y -= dx * this.options.touchSensitivity;
 
     // Update pitch (camera x rotation), clamp to [-PI/2, PI/2]
     const cam = this.camera;
     const maxPitch = Math.PI / 2 - 0.01;
     const minPitch = -maxPitch;
-    const updatedPitch = cam.rotation.x - dy * this.touchSensitivity;
+    const updatedPitch = cam.rotation.x - dy * this.options.touchSensitivity;
     cam.rotation.x = Math.max(minPitch, Math.min(maxPitch, updatedPitch));
     cam.rotation.z = 0;
 
@@ -236,9 +217,7 @@ export class Player {
   };
 
   private startPunch(): void {
-    if (this.isPunching) return;
-    this.isPunching = true;
-    this.punchTime = 0;
+    this.punchHandler.startPunch();
   }
 
   update(delta: number): void {
@@ -250,14 +229,15 @@ export class Player {
     this.velocity.x *= damping;
     this.velocity.z *= damping;
     // Gravity
-    this.velocity.y -= this.gravity * dt;
+    this.velocity.y -= this.options.gravity * this.options.gravityScale * dt;
 
     this.direction.z = Number(this.moveForward) - Number(this.moveBackward);
     this.direction.x = Number(this.moveRight) - Number(this.moveLeft);
     this.direction.normalize();
 
     const moveSpeed =
-      this.speed * (this.isSprinting ? this.sprintMultiplier : 1);
+      this.options.speed *
+      (this.isSprinting ? this.options.sprintMultiplier : 1);
     if (this.moveForward || this.moveBackward)
       this.velocity.z -= this.direction.z * moveSpeed * dt;
     if (this.moveLeft || this.moveRight)
@@ -271,96 +251,21 @@ export class Player {
     this.object.position.y += this.velocity.y * dt;
 
     const groundY = Math.max(
-      this.minLevel,
-      this.groundFn(this.object.position.x, this.object.position.z),
+      this.options.minLevel,
+      this.options.ground(this.object.position.x, this.object.position.z),
     );
 
-    if (this.object.position.y < groundY + this.height) {
+    const playerHeight = this.options.height * this.options.heightScale;
+
+    if (this.object.position.y < groundY + playerHeight) {
       this.velocity.y = 0;
-      this.object.position.y = groundY + this.height;
+      this.object.position.y = groundY + playerHeight;
       this.canJump = true;
     }
 
-    this.applyViewBobbing(dt);
-    this.applyPunch(dt);
-  }
-
-  applyViewBobbing(delta: number): void {
-    const basePos = this.baseViewPos;
-    const baseRot = this.baseViewRot;
-
     const isMoving =
       this.moveForward || this.moveBackward || this.moveLeft || this.moveRight;
-
-    if (isMoving) {
-      this.bobTime += delta * this.bobFreq;
-      const bobY = Math.abs(Math.sin(this.bobTime)) * this.bobAmpY;
-      const bobX = Math.sin(this.bobTime * 2) * this.bobAmpX;
-      const rotZ = Math.sin(this.bobTime) * this.bobRotZ;
-
-      this.viewModel.position.set(
-        basePos.x + bobX,
-        basePos.y - bobY,
-        basePos.z,
-      );
-      this.viewModel.rotation.set(baseRot.x, baseRot.y, baseRot.z + rotZ);
-    } else {
-      // Smoothly return to base pose when not moving
-      this.bobTime = 0;
-      this.viewModel.position.lerp(basePos, Math.min(1, delta * 10));
-      // Slerp-like for Euler: lerp each component.
-      this.viewModel.rotation.x +=
-        (baseRot.x - this.viewModel.rotation.x) * Math.min(1, delta * 10);
-      this.viewModel.rotation.y +=
-        (baseRot.y - this.viewModel.rotation.y) * Math.min(1, delta * 10);
-      this.viewModel.rotation.z +=
-        (baseRot.z - this.viewModel.rotation.z) * Math.min(1, delta * 10);
-    }
-  }
-
-  applyPunch(delta: number): void {
-    if (this.isPunching) {
-      this.punchTime += delta;
-      const time = Math.min(1, this.punchTime / this.punchDuration);
-      // Swing progress: 0 -> 1 -> 0 (peaks at mid-swing)
-      const swingProgress = Math.sin(time * Math.PI);
-
-      // Positional arc relative to the base hand position
-      this.rightHand.position.set(
-        this.baseRightHandPos.x + this.swingPosOffset.x * swingProgress,
-        this.baseRightHandPos.y + this.swingPosOffset.y * swingProgress,
-        this.baseRightHandPos.z + this.swingPosOffset.z * swingProgress,
-      );
-
-      // Rotational sweep relative to base rotation
-      this.rightHand.rotation.x =
-        this.baseRightHandRot.x + this.swingRotOffset.x * swingProgress;
-      this.rightHand.rotation.y =
-        this.baseRightHandRot.y + this.swingRotOffset.y * swingProgress;
-      this.rightHand.rotation.z =
-        this.baseRightHandRot.z + this.swingRotOffset.z * swingProgress;
-
-      if (time >= 1) {
-        this.isPunching = false;
-        // Ensure exact reset
-        this.rightHand.position.copy(this.baseRightHandPos);
-        this.rightHand.rotation.copy(this.baseRightHandRot);
-      }
-    } else {
-      // Smoothly return to base
-      this.rightHand.position.lerp(
-        this.baseRightHandPos,
-        Math.min(1, delta * 10),
-      );
-      this.rightHand.rotation.x +=
-        (this.baseRightHandRot.x - this.rightHand.rotation.x) *
-        Math.min(1, delta * 10);
-      this.rightHand.rotation.y +=
-        (this.baseRightHandRot.y - this.rightHand.rotation.y) *
-        Math.min(1, delta * 10);
-      this.rightHand.rotation.z +=
-        (this.baseRightHandRot.z - this.rightHand.rotation.z) *
-        Math.min(1, delta * 10);
-    }
+    this.viewBobbing.update(dt, isMoving);
+    this.punchHandler.update(dt);
   }
 }

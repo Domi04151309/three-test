@@ -41,10 +41,23 @@ export function startApp(container: HTMLDivElement): void {
 
   const player = new Player(camera, document.body, {
     gravity: 9.81,
+    gravityScale: 10,
     ground: terrain.getHeightAt.bind(terrain),
     height: 1.8,
+    heightScale: 10,
     jumpVelocity: 2,
+    jumpScale: 20,
     speed: 200,
+    sprintMultiplier: 10,
+    bobFreq: 8,
+    bobAmpY: 0.03,
+    bobAmpX: 0.02,
+    bobRotZ: 0.03,
+    minLevel: 16,
+    punchDuration: 0.2,
+    swingPosOffset: new THREE.Vector3(-0.25, -0.08, -0.45),
+    swingRotOffset: new THREE.Euler(-1.2, 0.6, 0.4),
+    touchSensitivity: 0.0025,
   });
   // Place player above terrain at start
   player.object.position.set(0, terrain.getHeightAt(0, 0) + 1.8, 0);
