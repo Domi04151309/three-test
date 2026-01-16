@@ -50,6 +50,6 @@ export const terrainOptions: TerrainOptions = {
   treeNoiseOctaves: 3,
   treeNoisePersistence: 0.55,
   maxTreesPerChunk: 16,
-  maxDaisiesPerChunk: 48,
+  maxDaisiesPerChunk: 64,
   flowerNoiseScale: 0.06,
 };

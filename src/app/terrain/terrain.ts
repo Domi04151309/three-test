@@ -28,14 +28,17 @@ export class Terrain extends THREE.Group {
     this.skyController = skyController;
     this.noiseGenerator = new NoiseGenerator();
     // Pre-generate a small pool of tree prototypes to clone per-chunk
-    for (let index = 0; index < this.options.treePoolSize; index += 1) {
-      const treePrototype = new Tree();
-      treePrototype.options.seed = Math.random() * 12_345;
-      treePrototype.generate();
-      const treeLod = new THREE.LOD();
-      treeLod.addLevel(treePrototype, 0);
-      treeLod.addLevel(new THREE.Object3D(), 480);
-      this.baseTrees.push(treeLod);
+    for (const type of ['Oak Medium', 'Oak Large']) {
+      for (let index = 0; index < this.options.treePoolSize; index += 1) {
+        const treePrototype = new Tree();
+        treePrototype.loadPreset(type);
+        treePrototype.options.seed = Math.random() * 12_345;
+        treePrototype.generate();
+        const treeLod = new THREE.LOD();
+        treeLod.addLevel(treePrototype, 0);
+        treeLod.addLevel(new THREE.Object3D(), 480);
+        this.baseTrees.push(treeLod);
+      }
     }
     const sampleChunks = 4;
     this.noiseRanges = computeNoiseRanges(

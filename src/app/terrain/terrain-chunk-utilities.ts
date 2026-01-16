@@ -99,7 +99,7 @@ export function generateTreesForChunk(
   );
   let treeCount = 0;
   // Replicate original density threshold behaviour; choose full count on high density
-  const treeHighThreshold = 0.6;
+  const treeHighThreshold = 0.5;
   if (densityNormalized > treeHighThreshold)
     treeCount = Math.floor(options.maxTreesPerChunk);
   const margin = options.cellSize;
