@@ -1,18 +1,17 @@
 import * as THREE from 'three';
 
 export class PositionDisplay {
-  private el: HTMLDivElement;
+  private element: HTMLDivElement;
 
   constructor() {
-    this.el = document.createElement('div');
-    this.el.id = 'coords';
-    this.el.textContent = 'x:0.00 y:0.00 z:0.00';
-    document.body.appendChild(this.el);
+    this.element = document.createElement('div');
+    this.element.id = 'coords';
+    this.element.classList.add('card');
+    this.element.textContent = 'x:0 y:0 z:0';
+    document.body.append(this.element);
   }
 
   update(pos: THREE.Vector3): void {
-    this.el.textContent = `x:${pos.x.toFixed(2)} y:${pos.y.toFixed(2)} z:${pos.z.toFixed(2)}`;
+    this.element.textContent = `x: ${pos.x.toFixed(0)} y: ${pos.y.toFixed(0)} z: ${pos.z.toFixed(0)}`;
   }
 }
-
-export default PositionDisplay;
