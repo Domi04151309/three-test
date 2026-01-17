@@ -161,7 +161,7 @@ export function generateTreesForChunk(
     const treeClone = prototype.clone(true);
     const scaleFactor = 0.6 + Math.random();
     treeClone.scale.set(scaleFactor, scaleFactor, scaleFactor);
-    treeClone.position.set(worldX, y, worldZ);
+    treeClone.position.set(worldX, y - 1, worldZ);
     objects.push(treeClone);
   }
   return objects;
