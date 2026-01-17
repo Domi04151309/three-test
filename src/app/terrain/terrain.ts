@@ -3,10 +3,10 @@ import { TerrainChunk } from './terrain-chunk';
 import { Grass } from './grass/grass';
 import { NoiseGenerator } from './noise';
 import { SkyController } from '../sky/sky';
-import { Tree } from '@dgreenheck/ez-tree';
 import { createChunkEntry, NoiseRanges } from './terrain-chunk-factory';
 import { computeNoiseRanges, makeKey } from './terrain-utilities';
 import { terrainOptions, TerrainOptions } from './terrain-options';
+import { Tree, TreePreset } from './tree';
 
 export class Terrain extends THREE.Group {
   private options: TerrainOptions = terrainOptions;
@@ -21,23 +21,16 @@ export class Terrain extends THREE.Group {
   };
   private noiseGenerator: NoiseGenerator;
   private skyController: SkyController;
-  private baseTrees: THREE.LOD[] = [];
+  private baseOakTrees: THREE.LOD[] = [];
 
   constructor(skyController: SkyController) {
     super();
     this.skyController = skyController;
     this.noiseGenerator = new NoiseGenerator();
     // Pre-generate a small pool of tree prototypes to clone per-chunk
-    for (const type of ['Oak Medium', 'Oak Large']) {
+    for (const type of ['Oak Medium', 'Oak Large'] as TreePreset[]) {
       for (let index = 0; index < this.options.treePoolSize; index += 1) {
-        const treePrototype = new Tree();
-        treePrototype.loadPreset(type);
-        treePrototype.options.seed = Math.random() * 12_345;
-        treePrototype.generate();
-        const treeLod = new THREE.LOD();
-        treeLod.addLevel(treePrototype, 0);
-        treeLod.addLevel(new THREE.Object3D(), 480);
-        this.baseTrees.push(treeLod);
+        this.baseOakTrees.push(Tree.create(type));
       }
     }
     const sampleChunks = 4;
@@ -80,7 +73,7 @@ export class Terrain extends THREE.Group {
       ...this.options,
       noiseGenerator: this.noiseGenerator,
       noiseRanges: this.noiseRanges as NoiseRanges,
-      baseTrees: this.baseTrees,
+      baseTrees: this.baseOakTrees,
     };
 
     const entry = createChunkEntry(cx, cz, parameters);
