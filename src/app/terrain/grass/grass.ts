@@ -87,9 +87,6 @@ export class Grass {
 
     return lod;
   }
-  private static sharedMaterial: THREE.RawShaderMaterial | null = null;
-  private static sharedGrassTexture: THREE.Texture | null = null;
-  private static sharedAlphaMap: THREE.Texture | null = null;
 
   /**
    * Update global uniforms that are shared by the material. Call once per frame.
