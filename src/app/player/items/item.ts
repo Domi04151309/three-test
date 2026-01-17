@@ -45,7 +45,7 @@ export class Item {
             new THREE.MeshPhongMaterial({
               color: new THREE.Color('#c3c7c7'),
               specular: new THREE.Color('#ffffff'),
-              shininess: 200,
+              shininess: 500,
             });
 
           object.traverse((child) => {

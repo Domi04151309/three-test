@@ -14,7 +14,7 @@ export function createComposer(
     new THREE.Vector2(window.innerWidth, window.innerHeight),
     0.4,
     0.5,
-    5,
+    50,
   );
 
   composer.addPass(renderPass);
