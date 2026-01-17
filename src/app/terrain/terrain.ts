@@ -171,7 +171,23 @@ export class Terrain extends THREE.Group {
     const camPos = new THREE.Vector3();
     camera.getWorldPosition(camPos);
     Grass.updateGlobalUniforms(delta, camPos, this.skyController);
-    for (const ch of this.chunks.values()) ch.update(camera);
+    // Propagate sun/ambient into terrain chunk materials
+    const sunDirection = this.skyController.sun.clone().normalize();
+    const sunIntensity = this.skyController.getSunIntensity();
+    const ambientIntensity = this.skyController.getAmbientIntensity();
+    for (const ch of this.chunks.values()) {
+      // Update the chunk material uniforms if present
+      const mat = ch.mesh.material as THREE.ShaderMaterial | THREE.Material;
+      const uniforms = (mat as THREE.ShaderMaterial).uniforms as Record<
+        string,
+        { value: unknown }
+      >;
+      (uniforms.sunDirection.value as THREE.Vector3).copy(sunDirection);
+      (uniforms.sunIntensity.value as number) = sunIntensity;
+      (uniforms.ambientIntensity.value as number) = ambientIntensity * 0.1;
+
+      ch.update(camera);
+    }
   }
 
   public getMapObjects(): Array<{

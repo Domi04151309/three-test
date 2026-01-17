@@ -1,9 +1,11 @@
 export const vertexShader = `
     varying vec3 vWorldPos;
+    varying vec3 vNormal;
     varying float vNormalY;
     #include <fog_pars_vertex>
     void main() {
-      vNormalY = normalize(mat3(modelMatrix) * normal).y;
+      vNormal = normalize(mat3(modelMatrix) * normal);
+      vNormalY = vNormal.y;
       vec4 wp = modelMatrix * vec4(position, 1.0);
       vWorldPos = wp.xyz;
       vec4 mvPosition = viewMatrix * wp;
@@ -15,6 +17,7 @@ export const vertexShader = `
 export const fragmentShader = `
     precision lowp float;
     varying vec3 vWorldPos;
+    varying vec3 vNormal;
     varying float vNormalY;
     #include <fog_pars_fragment>
     uniform sampler2D noiseTex;
@@ -36,6 +39,11 @@ export const fragmentShader = `
     uniform vec3 sandColor;
     uniform float snowLevel;
     uniform vec3 snowColor;
+    // Lighting
+    uniform vec3 sunDirection;
+    uniform vec3 lightColor;
+    uniform float sunIntensity;
+    uniform float ambientIntensity;
 
     void main() {
       vec2 nUv = vWorldPos.xz * noiseScale;
@@ -70,16 +78,24 @@ export const fragmentShader = `
       float texSand = dot(tSa.rgb, vec3(0.2126, 0.7152, 0.0722));
       float texSnow = dot(tSn.rgb, vec3(0.2126, 0.7152, 0.0722));
 
-      vec3 finalGrass = grassColor * texGrass * 1.5;
-      vec3 finalSand  = sandColor * texSand * 1.5;
-      vec3 finalSnow  = snowColor * texSnow * 1.5;
-      vec3 finalDirt  = dirtColor * texDirt * 1.5;
-      vec3 finalRock  = rockColor * texRock * 1.5;
+      vec3 finalGrass = grassColor * texGrass * 1.0;
+      vec3 finalSand  = sandColor * texSand * 1.0;
+      vec3 finalSnow  = snowColor * texSnow * 1.0;
+      vec3 finalDirt  = dirtColor * texDirt * 1.0;
+      vec3 finalRock  = rockColor * texRock * 1.0;
 
       vec3 grainGrass = mix(finalGrass, finalSand, isUnder);
       grainGrass = mix(grainGrass, finalSnow, step(snowLevel, h));
 
       vec3 col = rockFactor * finalRock + dirtFactor * finalDirt + grassFactor * grainGrass;
+
+      // lighting (damped sun contribution to avoid overexposure)
+      vec3 nrm = normalize(vNormal);
+      float ndl = max(dot(nrm, normalize(sunDirection)), 0.0);
+      float sunFactor = clamp(sunIntensity * 0.08, 0.0, 1.0);
+      vec3 lighting = vec3(ambientIntensity) + lightColor * sunFactor * ndl;
+      col *= lighting;
+
       gl_FragColor = vec4(col, 1.0);
       #include <fog_fragment>
     }

@@ -105,6 +105,12 @@ export class Grass {
     (uniforms.sunDirection.value as THREE.Vector3)
       .copy(skyController.sun)
       .normalize();
+    // Damp diffuse so high sun intensities don't overbright grass
+    (uniforms.diffuseStrength.value as number) =
+      skyController.getSunIntensity() * 0.08;
+    // Moderate ambient contribution
+    (uniforms.ambientStrength.value as number) =
+      skyController.getAmbientIntensity() * 0.35;
   }
 
   constructor(options: {

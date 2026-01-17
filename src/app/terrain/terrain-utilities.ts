@@ -40,6 +40,11 @@ export function createNoiseMaterial(waterLevel: number) {
     rockColor: { value: new THREE.Color('hsl(20, 0%, 40%)') },
     sandColor: { value: new THREE.Color('hsl(40, 45%, 70%)') },
     snowColor: { value: new THREE.Color('hsl(0, 0%, 95%)') },
+    // Lighting uniforms (defaults)
+    sunDirection: { value: new THREE.Vector3(0.5, 0.5, 0.2) },
+    lightColor: { value: new THREE.Color('#ffffff') },
+    sunIntensity: { value: 1 },
+    ambientIntensity: { value: 0.5 },
     noiseScale: { value: 0.02 },
     noiseAmp: { value: 0.6 },
     slopeHigh: { value: 0.5 },

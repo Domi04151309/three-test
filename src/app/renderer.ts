@@ -8,6 +8,7 @@ export function createRenderer(
     antialias: true,
     powerPreference: 'high-performance',
   });
+  renderer.setClearColor('hsl(240, 20%, 2%)');
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 0.5;
