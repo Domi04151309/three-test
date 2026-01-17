@@ -27,7 +27,7 @@ export class Fireflies extends THREE.Object3D {
     const geom = new THREE.SphereGeometry(0.05, 1, 1);
     for (let index = 0; index < this.count; index++) {
       const mat = new THREE.MeshBasicMaterial();
-      mat.color.setRGB(8, 8, 8);
+      mat.color.setRGB(51, 51, 51);
 
       const mesh = new THREE.Mesh(geom, mat);
       mesh.renderOrder = 1001;

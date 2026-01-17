@@ -12,8 +12,8 @@ export function createComposer(
   const renderPass = new RenderPass(scene, camera);
   const bloomPass = new UnrealBloomPass(
     new THREE.Vector2(window.innerWidth, window.innerHeight),
-    0.4,
-    0.5,
+    0.01,
+    0,
     50,
   );
 
