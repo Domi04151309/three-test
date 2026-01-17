@@ -66,7 +66,9 @@ export function createGrassForChunk(
 
 export function generateTreesForChunk(
   options: TerrainOptions & {
-    baseTrees: THREE.LOD[];
+    baseOakTrees: THREE.LOD[];
+    baseAspenTrees: THREE.LOD[];
+    basePineTrees: THREE.LOD[];
     centerX: number;
     centerZ: number;
     chunkPlaneWidth: number;
@@ -76,17 +78,25 @@ export function generateTreesForChunk(
   },
 ) {
   const objects: THREE.Object3D[] = [];
-  if (options.baseTrees.length === 0) return objects;
+  const totalPrototypes =
+    options.baseOakTrees.length +
+    options.baseAspenTrees.length +
+    options.basePineTrees.length;
+  if (totalPrototypes === 0) return objects;
+
   const tx = options.centerX / options.cellSize;
   const tz = options.centerZ / options.cellSize;
   const treeNoiseOptions = {
     lacunarity: options.lacunarity,
     octaves: options.treeNoiseOctaves,
-    offsetZ: options.seed + 2048,
     persistence: options.treeNoisePersistence,
     scale: options.treeNoiseScale,
   } as const;
-  const tRaw = options.noiseGenerator.sampleOctaves(tx, tz, treeNoiseOptions);
+
+  const tRaw = options.noiseGenerator.sampleOctaves(tx, tz, {
+    ...treeNoiseOptions,
+    offsetZ: options.seed + 2048,
+  });
   let amp = 1;
   let ampSum = 0;
   for (let index = 0; index < options.treeNoiseOctaves; index += 1) {
@@ -98,10 +108,10 @@ export function generateTreesForChunk(
     Math.min(1, (tRaw / (ampSum || 1) + 1) * 0.5),
   );
   let treeCount = 0;
-  // Replicate original density threshold behaviour; choose full count on high density
   const treeHighThreshold = 0.5;
   if (densityNormalized > treeHighThreshold)
     treeCount = Math.floor(options.maxTreesPerChunk);
+
   const margin = options.cellSize;
   for (let ti = 0; ti < treeCount; ti += 1) {
     const rx =
@@ -114,10 +124,40 @@ export function generateTreesForChunk(
     const worldZ = options.centerZ + rz;
     const y = options.sampleFromHeightData(worldX, worldZ);
     if (y <= options.waterLevel + 12) continue;
+
+    // Per-tree species decision using local noise channels
+    const px = worldX / options.cellSize;
+    const pz = worldZ / options.cellSize;
+    const pineScore = options.noiseGenerator.sampleOctaves(px, pz, {
+      ...treeNoiseOptions,
+      offsetZ: options.seed + 9000,
+    });
+    const aspenScore = options.noiseGenerator.sampleOctaves(px, pz, {
+      ...treeNoiseOptions,
+      offsetZ: options.seed + 10_000,
+    });
+    const oakScore = options.noiseGenerator.sampleOctaves(px, pz, {
+      ...treeNoiseOptions,
+      offsetZ: options.seed + 11_000,
+    });
+    const speciesScores = [pineScore, aspenScore, oakScore];
+    const speciesIndex = speciesScores.indexOf(Math.max(...speciesScores));
+
+    // Select a prototype from the chosen species, falling back if empty
+    let chosenArray: THREE.LOD[] = options.baseOakTrees;
+    if (speciesIndex === 0) chosenArray = options.basePineTrees;
+    else if (speciesIndex === 1) chosenArray = options.baseAspenTrees;
+
+    if (chosenArray.length === 0) {
+      if (options.baseOakTrees.length > 0) chosenArray = options.baseOakTrees;
+      else if (options.baseAspenTrees.length > 0)
+        chosenArray = options.baseAspenTrees;
+      else chosenArray = options.basePineTrees;
+    }
+
     const pickIndex =
-      Math.floor(Math.random() * options.baseTrees.length) %
-      options.baseTrees.length;
-    const prototype = options.baseTrees[pickIndex];
+      Math.floor(Math.random() * chosenArray.length) % chosenArray.length;
+    const prototype = chosenArray[pickIndex];
     const treeClone = prototype.clone(true);
     const scaleFactor = 0.6 + Math.random();
     treeClone.scale.set(scaleFactor, scaleFactor, scaleFactor);

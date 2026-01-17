@@ -22,15 +22,23 @@ export class Terrain extends THREE.Group {
   private noiseGenerator: NoiseGenerator;
   private skyController: SkyController;
   private baseOakTrees: THREE.LOD[] = [];
+  private baseAspenTrees: THREE.LOD[] = [];
+  private basePineTrees: THREE.LOD[] = [];
 
   constructor(skyController: SkyController) {
     super();
     this.skyController = skyController;
     this.noiseGenerator = new NoiseGenerator();
     // Pre-generate a small pool of tree prototypes to clone per-chunk
-    for (const type of ['Oak Medium', 'Oak Large'] as TreePreset[]) {
-      for (let index = 0; index < this.options.treePoolSize; index += 1) {
+    for (let index = 0; index < this.options.treePoolSize / 2; index += 1) {
+      for (const type of ['Oak Medium', 'Oak Large'] as TreePreset[]) {
         this.baseOakTrees.push(Tree.create(type));
+      }
+      for (const type of ['Aspen Medium', 'Aspen Large'] as TreePreset[]) {
+        this.baseAspenTrees.push(Tree.create(type));
+      }
+      for (const type of ['Pine Medium', 'Pine Large'] as TreePreset[]) {
+        this.basePineTrees.push(Tree.create(type));
       }
     }
     const sampleChunks = 4;
@@ -68,12 +76,16 @@ export class Terrain extends THREE.Group {
     const parameters: TerrainOptions & {
       noiseGenerator: NoiseGenerator;
       noiseRanges: NoiseRanges;
-      baseTrees: THREE.LOD[];
+      baseOakTrees: THREE.LOD[];
+      baseAspenTrees: THREE.LOD[];
+      basePineTrees: THREE.LOD[];
     } = {
       ...this.options,
       noiseGenerator: this.noiseGenerator,
       noiseRanges: this.noiseRanges as NoiseRanges,
-      baseTrees: this.baseOakTrees,
+      baseOakTrees: this.baseOakTrees,
+      baseAspenTrees: this.baseAspenTrees,
+      basePineTrees: this.basePineTrees,
     };
 
     const entry = createChunkEntry(cx, cz, parameters);

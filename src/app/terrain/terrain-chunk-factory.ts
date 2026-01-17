@@ -86,7 +86,9 @@ export function createChunkEntry(
   parameters: TerrainOptions & {
     noiseGenerator: NoiseGenerator;
     noiseRanges: NoiseRanges;
-    baseTrees: THREE.LOD[];
+    baseOakTrees: THREE.LOD[];
+    baseAspenTrees: THREE.LOD[];
+    basePineTrees: THREE.LOD[];
   },
 ): ChunkEntry {
   const offsetX = cx * parameters.chunkSize;
@@ -135,7 +137,9 @@ export function createChunkEntry(
 
   const trees = generateTreesForChunk({
     ...parameters,
-    baseTrees: parameters.baseTrees,
+    baseOakTrees: parameters.baseOakTrees,
+    baseAspenTrees: parameters.baseAspenTrees,
+    basePineTrees: parameters.basePineTrees,
     centerX,
     centerZ,
     chunkPlaneWidth,
