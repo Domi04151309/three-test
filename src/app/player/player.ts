@@ -6,35 +6,46 @@ import { Item } from './items/item';
 import { PlayerOptions } from './types';
 import { ViewBobbing } from './view-bobbing';
 import { PunchHandler } from './punch-handler';
+import {
+  createHotbarPreview,
+  disposeHotbarPreview,
+  HotbarPreviewEntry,
+} from './hotbar-preview';
+import { attachPlayerInputHandlers } from './player-inputs';
 
 export class Player {
-  public object: THREE.Object3D;
-  private controls: PointerLockControls;
-  private camera: THREE.PerspectiveCamera;
-  private isZooming = false;
-  private readonly zoomFov = 20;
-  private readonly zoomSpeed = 10;
-  private defaultFov = 75;
-  private blocker: HTMLElement | null = null;
-  private viewModel: THREE.Group;
-  private rightHand: THREE.Mesh;
-  private inventory: (Item | null)[] = Array.from({ length: 9 }, () => null);
-  private currentSlot = -1;
-  private viewBobbing: ViewBobbing;
-  private punchHandler: PunchHandler;
-  private velocity: THREE.Vector3;
-  private direction: THREE.Vector3;
-  private moveForward = false;
-  private moveBackward = false;
-  private moveLeft = false;
-  private moveRight = false;
-  private canJump = false;
-  private isSprinting = false;
-  private readonly options: PlayerOptions;
-  private touchId: number | null = null;
-  private lastTouchX = 0;
-  private lastTouchY = 0;
-  private wheelAccumulator = 0;
+  object: THREE.Object3D;
+  controls: PointerLockControls;
+  camera: THREE.PerspectiveCamera;
+  isZooming = false;
+  readonly zoomFov = 20;
+  readonly zoomSpeed = 10;
+  defaultFov = 75;
+  blocker: HTMLElement | null = null;
+  viewModel: THREE.Group;
+  rightHand: THREE.Mesh;
+  inventory: (Item | null)[] = Array.from({ length: 9 }, () => null);
+  currentSlot = -1;
+  viewBobbing: ViewBobbing;
+  punchHandler: PunchHandler;
+  velocity: THREE.Vector3;
+  direction: THREE.Vector3;
+  moveForward = false;
+  moveBackward = false;
+  moveLeft = false;
+  moveRight = false;
+  canJump = false;
+  isSprinting = false;
+  readonly options: PlayerOptions;
+  touchId: number | null = null;
+  lastTouchX = 0;
+  lastTouchY = 0;
+  wheelAccumulator = 0;
+  hotbarRenderers: (HotbarPreviewEntry | null)[] = Array.from(
+    { length: 9 },
+    () => null,
+  );
+  detachInputs?: () => void;
 
   constructor(
     camera: THREE.PerspectiveCamera,
@@ -81,20 +92,7 @@ export class Player {
     this.velocity = new THREE.Vector3();
     this.direction = new THREE.Vector3();
 
-    this.bindKeys();
-    // Bind mouse for punch action (left click)
-    domElement.addEventListener('mousedown', this.onMouseDown);
-    // Mouse wheel to change hotbar slots
-    domElement.addEventListener('wheel', this.onWheel, { passive: true });
-    // Touch look handlers (single-touch to look around)
-    domElement.addEventListener('touchstart', this.onTouchStart, {
-      passive: false,
-    });
-    domElement.addEventListener('touchmove', this.onTouchMove, {
-      passive: false,
-    });
-    domElement.addEventListener('touchend', this.onTouchEnd);
-    domElement.addEventListener('touchcancel', this.onTouchEnd);
+    this.detachInputs = attachPlayerInputHandlers(this, domElement);
   }
 
   enablePointerLockUI(
@@ -117,12 +115,7 @@ export class Player {
     });
   }
 
-  private bindKeys(): void {
-    document.addEventListener('keydown', this.onKeyDown);
-    document.addEventListener('keyup', this.onKeyUp);
-  }
-
-  private handleKey(code: string, down: boolean): void {
+  handleKey(code: string, down: boolean): void {
     switch (code) {
       case 'ArrowUp':
       case 'KeyW':
@@ -175,7 +168,7 @@ export class Player {
     }
   }
 
-  private selectSlot(index: number): void {
+  selectSlot(index: number): void {
     this.equipSlot(index);
   }
 
@@ -203,103 +196,24 @@ export class Player {
     const children = hotbar.querySelectorAll('.slot');
     for (const [index, element] of children.entries()) {
       element.classList.toggle('selected', index === this.currentSlot);
+      const item = this.inventory[index];
+      if (item && item.object) {
+        if (!this.hotbarRenderers[index]) {
+          const entry = createHotbarPreview(item);
+          const old = (element as HTMLElement).querySelector('canvas');
+          if (old) old.remove();
+          (element as HTMLElement).append(entry.canvas);
+          this.hotbarRenderers[index] = entry;
+        }
+      } else if (this.hotbarRenderers[index]) {
+        const entry = this.hotbarRenderers[index];
+        disposeHotbarPreview(entry);
+        this.hotbarRenderers[index] = null;
+      }
     }
   }
 
-  private onKeyDown = (event: KeyboardEvent): void => {
-    this.handleKey(event.code, true);
-  };
-
-  private onKeyUp = (event: KeyboardEvent): void => {
-    this.handleKey(event.code, false);
-  };
-
-  private onMouseDown = (event: MouseEvent): void => {
-    if (event.button !== 0) return;
-    this.startPunch();
-  };
-
-  private onWheel = (event: WheelEvent): void => {
-    // Accumulate wheel delta and only switch slots when a threshold is passed.
-    // This reduces sensitivity for high-resolution wheels and touchpads.
-    this.wheelAccumulator += event.deltaY;
-
-    // Larger = less sensitive (adjust if needed)
-    const threshold = 100;
-    if (Math.abs(this.wheelAccumulator) < threshold) return;
-
-    const directionSign = this.wheelAccumulator > 0 ? 1 : -1;
-    this.wheelAccumulator = 0;
-
-    const inventoryLength = this.inventory.length;
-    let next = this.currentSlot;
-    if (next === -1) next = 0;
-    next = (next + directionSign + inventoryLength) % inventoryLength;
-    this.selectSlot(next);
-  };
-
-  private onTouchStart = (event: TouchEvent): void => {
-    if (event.touches.length !== 1) return;
-
-    const [touch] = event.touches;
-    this.touchId = touch.identifier;
-    this.lastTouchX = touch.clientX;
-    this.lastTouchY = touch.clientY;
-
-    // Hide blocker UI immediately when user starts using touch controls
-    if (this.blocker) this.blocker.style.display = 'none';
-
-    event.preventDefault();
-  };
-
-  private onTouchMove = (event: TouchEvent): void => {
-    if (this.touchId === null) return;
-    // Find the tracked touch
-    let touch: Touch | null = null;
-    for (let index = 0; index < event.touches.length; index++) {
-      const tt = event.touches.item(index);
-      if (tt && tt.identifier === this.touchId) {
-        touch = tt;
-        break;
-      }
-    }
-    if (!touch) return;
-
-    const dx = touch.clientX - this.lastTouchX;
-    const dy = touch.clientY - this.lastTouchY;
-    this.lastTouchX = touch.clientX;
-    this.lastTouchY = touch.clientY;
-
-    const yawObject = this.controls.object;
-    // Update yaw (around Y axis)
-    yawObject.rotation.y -= dx * this.options.touchSensitivity;
-
-    // Update pitch (camera x rotation), clamp to [-PI/2, PI/2]
-    const cam = this.camera;
-    const maxPitch = Math.PI / 2 - 0.01;
-    const minPitch = -maxPitch;
-    const updatedPitch = cam.rotation.x - dy * this.options.touchSensitivity;
-    cam.rotation.x = Math.max(minPitch, Math.min(maxPitch, updatedPitch));
-    cam.rotation.z = 0;
-
-    event.preventDefault();
-  };
-
-  private onTouchEnd = (event: TouchEvent): void => {
-    // If the tracked touch ended, clear tracking
-    if (this.touchId === null) return;
-    let stillActive = false;
-    for (let index = 0; index < event.touches.length; index++) {
-      const tt = event.touches.item(index);
-      if (tt && tt.identifier === this.touchId) {
-        stillActive = true;
-        break;
-      }
-    }
-    if (!stillActive) this.touchId = null;
-  };
-
-  private startPunch(): void {
+  startPunch(): void {
     this.punchHandler.startPunch();
   }
 
