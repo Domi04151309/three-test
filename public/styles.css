@@ -183,7 +183,14 @@ kbd {
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-direction: column;
   z-index: 9999;
+}
+
+#inventory-title {
+  font-size: 32px;
+  font-weight: bold;
+  line-height: 2;
 }
 
 #inventory-hotbar {

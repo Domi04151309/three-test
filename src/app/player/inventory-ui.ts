@@ -33,6 +33,10 @@ export function openInventory(manager: InventoryManager): void {
   overlay.id = 'inventory-overlay';
   overlay.classList.add('inventory-overlay');
 
+  const title = document.createElement('div');
+  title.id = 'inventory-title';
+  title.textContent = 'Inventory';
+
   const hotbarWrap = document.createElement('ul');
   hotbarWrap.id = 'inventory-hotbar';
   hotbarWrap.classList.add('inventory-hotbar');
@@ -51,7 +55,7 @@ export function openInventory(manager: InventoryManager): void {
     hotbarWrap.append(li);
   }
 
-  overlay.append(hotbarWrap);
+  overlay.append(title, hotbarWrap);
   document.body.append(overlay);
   manager.inventoryOverlay = overlay;
 
