@@ -13,6 +13,7 @@ import {
   HotbarPreviewEntry,
 } from './hotbar-preview';
 import { attachPlayerInputHandlers } from './player-inputs';
+import { Pickaxe } from './items/pickaxe';
 
 export class Player {
   object: THREE.Object3D;
@@ -73,10 +74,17 @@ export class Player {
       this.equipSlot(0);
     })().catch(console.error);
 
-    // Load axe for inventory slot 2 (index 1).
+    // Load pickaxe for inventory slot 2.
+    (async () => {
+      const pickaxe = await Pickaxe.create();
+      this.inventory[1] = pickaxe;
+      this.updateHotbarUI();
+    })().catch(console.error);
+
+    // Load axe for inventory slot 3.
     (async () => {
       const axe = await Axe.create();
-      this.inventory[1] = axe;
+      this.inventory[2] = axe;
       this.updateHotbarUI();
     })().catch(console.error);
 
