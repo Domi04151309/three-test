@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockControls';
 import { createViewModel, ViewModelData } from './view-model';
 import { Sword } from './items/sword';
+import { Axe } from './items/axe';
 import { Item } from './items/item';
 import { PlayerOptions } from './types';
 import { ViewBobbing } from './view-bobbing';
@@ -65,15 +66,19 @@ export class Player {
     this.rightHand = vm.rightHand;
     this.object.add(this.viewModel);
 
-    // Load sword for inventory slot 1 (index 0). detach immediately and equip slot 0
-    const hand = this.rightHand;
-    (async (handReference: THREE.Mesh) => {
-      const sword = await Sword.createForHand(handReference);
-      if (sword.object && sword.object.parent === handReference)
-        handReference.remove(sword.object);
+    // Load sword for inventory slot 1 (index 0). equip slot 0
+    (async () => {
+      const sword = await Sword.create();
       this.inventory[0] = sword;
       this.equipSlot(0);
-    })(hand).catch(console.error);
+    })().catch(console.error);
+
+    // Load axe for inventory slot 2 (index 1).
+    (async () => {
+      const axe = await Axe.create();
+      this.inventory[1] = axe;
+      this.updateHotbarUI();
+    })().catch(console.error);
 
     // Initialize helpers for view bobbing and punching
     this.viewBobbing = new ViewBobbing(

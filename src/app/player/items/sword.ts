@@ -13,9 +13,9 @@ export class Sword extends Item {
     super(options);
   }
 
-  static async createForHand(hand: THREE.Mesh): Promise<Sword> {
+  static async create(): Promise<Sword> {
     const sword = new Sword();
-    await sword.load(hand);
+    await sword.load();
     return sword;
   }
 }

@@ -18,20 +18,11 @@ export class Item {
     this.options = options;
   }
 
-  static async createForHand(
-    hand: THREE.Mesh,
-    options: ItemOptions,
-  ): Promise<Item> {
-    const item = new Item(options);
-    await item.load(hand);
-    return item;
-  }
-
   get object(): THREE.Object3D | null {
     return this.group;
   }
 
-  protected async load(hand: THREE.Mesh): Promise<void> {
+  protected async load(): Promise<void> {
     const { basePath, file, material, rotation, position } = this.options;
 
     const group = await new Promise<THREE.Group>((resolve, reject) => {
@@ -70,7 +61,6 @@ export class Item {
     if (rotation) group.rotation.copy(rotation);
     if (position) group.position.copy(position);
 
-    hand.add(group);
     this.group = group;
   }
 }
