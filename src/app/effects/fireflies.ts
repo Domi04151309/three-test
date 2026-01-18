@@ -10,22 +10,22 @@ export class Fireflies extends THREE.Object3D {
   private spheres: THREE.Mesh[];
   private velocities: Float32Array;
   private life: Float32Array;
-  private count: number;
+  private fireflyCount: number;
   private minDistance: number;
   private maxDistance: number;
 
   constructor(options: FirefliesOptions) {
     super();
-    this.count = options.count;
+    this.fireflyCount = options.count;
 
     this.minDistance = options.minDistance;
     this.maxDistance = options.maxDistance;
     this.spheres = [];
-    this.velocities = new Float32Array(this.count * 3);
-    this.life = new Float32Array(this.count);
+    this.velocities = new Float32Array(this.fireflyCount * 3);
+    this.life = new Float32Array(this.fireflyCount);
 
     const geom = new THREE.SphereGeometry(0.05, 1, 1);
-    for (let index = 0; index < this.count; index++) {
+    for (let index = 0; index < this.fireflyCount; index++) {
       const mat = new THREE.MeshBasicMaterial();
       mat.color.setRGB(51, 51, 51);
 
@@ -36,12 +36,12 @@ export class Fireflies extends THREE.Object3D {
       this.spheres.push(mesh);
     }
 
-    for (let index = 0; index < this.count; index++) this.respawn(index);
+    for (let index = 0; index < this.fireflyCount; index++) this.respawn(index);
   }
 
   public initialize(center: THREE.Vector3): void {
     this.position.copy(center);
-    for (let index = 0; index < this.count; index++) this.respawn(index);
+    for (let index = 0; index < this.fireflyCount; index++) this.respawn(index);
   }
 
   private respawn(index: number): void {
@@ -69,7 +69,7 @@ export class Fireflies extends THREE.Object3D {
 
   public update(dt: number, playerPosition: THREE.Vector3): void {
     this.position.copy(playerPosition);
-    for (let index = 0; index < this.count; index++) {
+    for (let index = 0; index < this.fireflyCount; index++) {
       const base = index * 3;
       const mesh = this.spheres[index];
       mesh.position.x += this.velocities[base] * dt;
@@ -92,7 +92,7 @@ export class Fireflies extends THREE.Object3D {
   }
 
   public getParticlePosition(index: number): THREE.Vector3 {
-    const clamped = Math.max(0, Math.min(this.count - 1, index));
+    const clamped = Math.max(0, Math.min(this.fireflyCount - 1, index));
     const position = new THREE.Vector3();
     position.copy(this.spheres[clamped].position).add(this.position);
     return position;
