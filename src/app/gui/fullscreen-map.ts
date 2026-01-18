@@ -88,7 +88,7 @@ export class FullscreenMap {
     const wl = terrainOptions.waterLevel;
 
     // Precomputed base colors (r,g,b) approximating the previous HSL choices.
-    const COLOR_SAND = [215, 180, 120];
+    const COLOR_SAND = [240, 216, 168];
     const COLOR_WATER = [80, 130, 230];
     const COLOR_SNOW = [242, 242, 242];
     const COLOR_GRASS = [15, 80, 20];

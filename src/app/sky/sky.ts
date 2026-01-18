@@ -142,11 +142,9 @@ export class SkyController extends THREE.Group {
     this.sun.setFromSphericalCoords(1, phi, theta);
 
     // Compute daylight intensity factor early so we can hide clouds at night.
-    const intensityFactor = THREE.MathUtils.clamp(
-      (elevationDeg + 10) / 100,
-      0,
-      1,
-    );
+    // Use a fast-rise curve so the sun reaches near-full intensity shortly after sunrise.
+    // Smoothly ramp from 0..1 between 0 and ~8 degrees elevation.
+    const intensityFactor = THREE.MathUtils.smoothstep(elevationDeg, 0, 8);
     const cloudVisibleThreshold = 0.06;
 
     // Position clouds relative to player and smoothly fade opacity with time of day.
