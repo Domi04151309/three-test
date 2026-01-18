@@ -5,7 +5,8 @@ export class Sword extends Item {
   constructor() {
     const options: ItemOptions = {
       basePath: 'models/sword/',
-      file: 'sword.obj',
+      objectFile: 'sword.obj',
+      mtlFile: 'sword.mtl',
       scale: 0.4,
       rotation: new THREE.Euler(0, Math.PI / 2, 0),
       position: new THREE.Vector3(0, -0.5, 0),

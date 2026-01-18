@@ -1,9 +1,11 @@
 import * as THREE from 'three';
+import { MTLLoader } from 'three/examples/jsm/Addons.js';
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader';
 
 export interface ItemOptions {
   basePath: string;
-  file: string;
+  objectFile: string;
+  mtlFile: string;
   scale?: number;
   rotation?: THREE.Euler;
   position?: THREE.Vector3;
@@ -23,30 +25,28 @@ export class Item {
   }
 
   protected async load(): Promise<void> {
-    const { basePath, file, material, rotation, position } = this.options;
+    const { basePath, objectFile, mtlFile, rotation, position } = this.options;
 
     const group = await new Promise<THREE.Group>((resolve, reject) => {
-      const loader = new OBJLoader();
-      loader.setPath(basePath);
-      loader.load(
-        file,
-        (object) => {
-          const mat =
-            material ??
-            new THREE.MeshPhongMaterial({
-              color: new THREE.Color('#c3c7c7'),
-              specular: new THREE.Color('#ffffff'),
-              shininess: 500,
-            });
-
-          object.traverse((child) => {
-            if (child instanceof THREE.Mesh) {
-              child.geometry.computeVertexNormals();
-              child.material = mat;
-            }
-          });
-
-          resolve(object);
+      const mtlLoader = new MTLLoader();
+      mtlLoader.setPath(basePath);
+      mtlLoader.load(
+        mtlFile,
+        (materials) => {
+          materials.preload();
+          const objectLoader = new OBJLoader();
+          objectLoader.setMaterials(materials);
+          objectLoader.setPath(basePath);
+          objectLoader.load(
+            objectFile,
+            (object) => {
+              resolve(object);
+            },
+            (event_) => event_,
+            (error) => {
+              reject(new Error(String(error)));
+            },
+          );
         },
         (event_) => event_,
         (error) => {
