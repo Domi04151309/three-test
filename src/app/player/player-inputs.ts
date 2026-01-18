@@ -35,8 +35,8 @@ export function attachPlayerInputHandlers(
     if (event.button !== 0) return;
     if (isBlockedByMenu()) return;
     // Disable punch while inventory is open
-    if (player.inventoryOpen) return;
-    player.startPunch();
+    if (player.inventoryManager.inventoryOpen) return;
+    player.punchHandler.startPunch();
   };
   const onWheel = (event: WheelEvent) => {
     if (isBlockedByMenu()) return;
@@ -45,11 +45,11 @@ export function attachPlayerInputHandlers(
     if (Math.abs(player.wheelAccumulator) < threshold) return;
     const directionSign = player.wheelAccumulator > 0 ? 1 : -1;
     player.wheelAccumulator = 0;
-    const inventoryLength = player.inventory.length;
-    let next = player.currentSlot;
+    const inventoryLength = player.inventoryManager.inventory.length;
+    let next = player.inventoryManager.currentSlot;
     if (next === -1) next = 0;
     next = (next + directionSign + inventoryLength) % inventoryLength;
-    player.selectSlot(next);
+    player.inventoryManager.selectSlot(next);
   };
 
   const onTouchStart = (event: TouchEvent) => {
