@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockControls';
 import { createViewModel, ViewModelData } from './view-model';
 import { Sword } from './items/sword';
+import { Item } from './items/item';
 import { PlayerOptions } from './types';
 import { ViewBobbing } from './view-bobbing';
 import { PunchHandler } from './punch-handler';
@@ -17,6 +18,8 @@ export class Player {
   private blocker: HTMLElement | null = null;
   private viewModel: THREE.Group;
   private rightHand: THREE.Mesh;
+  private inventory: (Item | null)[] = Array.from({ length: 9 }, () => null);
+  private currentSlot = -1;
   private viewBobbing: ViewBobbing;
   private punchHandler: PunchHandler;
   private velocity: THREE.Vector3;
@@ -31,6 +34,7 @@ export class Player {
   private touchId: number | null = null;
   private lastTouchX = 0;
   private lastTouchY = 0;
+  private wheelAccumulator = 0;
 
   constructor(
     camera: THREE.PerspectiveCamera,
@@ -50,8 +54,15 @@ export class Player {
     this.rightHand = vm.rightHand;
     this.object.add(this.viewModel);
 
-    // Load and attach sword model to the right hand view-model
-    Sword.createForHand(this.rightHand).catch(console.error);
+    // Load sword for inventory slot 1 (index 0). detach immediately and equip slot 0
+    const hand = this.rightHand;
+    (async (handReference: THREE.Mesh) => {
+      const sword = await Sword.createForHand(handReference);
+      if (sword.object && sword.object.parent === handReference)
+        handReference.remove(sword.object);
+      this.inventory[0] = sword;
+      this.equipSlot(0);
+    })(hand).catch(console.error);
 
     // Initialize helpers for view bobbing and punching
     this.viewBobbing = new ViewBobbing(
@@ -73,6 +84,8 @@ export class Player {
     this.bindKeys();
     // Bind mouse for punch action (left click)
     domElement.addEventListener('mousedown', this.onMouseDown);
+    // Mouse wheel to change hotbar slots
+    domElement.addEventListener('wheel', this.onWheel, { passive: true });
     // Touch look handlers (single-touch to look around)
     domElement.addEventListener('touchstart', this.onTouchStart, {
       passive: false,
@@ -143,8 +156,53 @@ export class Player {
       case 'KeyC':
         this.isZooming = down;
         break;
+      case 'Digit1':
+      case 'Digit2':
+      case 'Digit3':
+      case 'Digit4':
+      case 'Digit5':
+      case 'Digit6':
+      case 'Digit7':
+      case 'Digit8':
+      case 'Digit9':
+        if (down) {
+          const slot = Number(code.replace('Digit', '')) - 1;
+          if (!Number.isNaN(slot)) this.selectSlot(slot);
+        }
+        break;
       default:
         break;
+    }
+  }
+
+  private selectSlot(index: number): void {
+    this.equipSlot(index);
+  }
+
+  private equipSlot(index: number): void {
+    if (index < 0 || index >= this.inventory.length) return;
+    // Unequip current
+    if (this.currentSlot !== -1) {
+      const current = this.inventory[this.currentSlot];
+      if (current && current.object && current.object.parent === this.rightHand)
+        this.rightHand.remove(current.object);
+    }
+
+    this.currentSlot = index;
+
+    // Equip new
+    const next = this.inventory[this.currentSlot];
+    if (next && next.object) this.rightHand.add(next.object);
+
+    this.updateHotbarUI();
+  }
+
+  private updateHotbarUI(): void {
+    const hotbar = document.getElementById('hotbar');
+    if (!hotbar) return;
+    const children = hotbar.querySelectorAll('.slot');
+    for (const [index, element] of children.entries()) {
+      element.classList.toggle('selected', index === this.currentSlot);
     }
   }
 
@@ -159,6 +217,25 @@ export class Player {
   private onMouseDown = (event: MouseEvent): void => {
     if (event.button !== 0) return;
     this.startPunch();
+  };
+
+  private onWheel = (event: WheelEvent): void => {
+    // Accumulate wheel delta and only switch slots when a threshold is passed.
+    // This reduces sensitivity for high-resolution wheels and touchpads.
+    this.wheelAccumulator += event.deltaY;
+
+    // Larger = less sensitive (adjust if needed)
+    const threshold = 100;
+    if (Math.abs(this.wheelAccumulator) < threshold) return;
+
+    const directionSign = this.wheelAccumulator > 0 ? 1 : -1;
+    this.wheelAccumulator = 0;
+
+    const inventoryLength = this.inventory.length;
+    let next = this.currentSlot;
+    if (next === -1) next = 0;
+    next = (next + directionSign + inventoryLength) % inventoryLength;
+    this.selectSlot(next);
   };
 
   private onTouchStart = (event: TouchEvent): void => {
@@ -227,14 +304,10 @@ export class Player {
   }
 
   update(delta: number): void {
-    // Bound delta to avoid unstable physics/integration on long frames
     const dt = Math.min(delta, 0.05);
-
-    // Damping (use exponential-style damping for stability)
     const damping = Math.exp(-10 * dt);
     this.velocity.x *= damping;
     this.velocity.z *= damping;
-    // Gravity
     this.velocity.y -= this.options.gravity * this.options.gravityScale * dt;
 
     this.direction.z = Number(this.moveForward) - Number(this.moveBackward);
@@ -249,20 +322,15 @@ export class Player {
     if (this.moveLeft || this.moveRight)
       this.velocity.x -= this.direction.x * moveSpeed * dt;
 
-    // Move controls
     this.controls.moveRight(-this.velocity.x * dt);
     this.controls.moveForward(-this.velocity.z * dt);
-
-    // Apply vertical motion
     this.object.position.y += this.velocity.y * dt;
 
     const groundY = Math.max(
       this.options.minLevel,
       this.options.ground(this.object.position.x, this.object.position.z),
     );
-
     const playerHeight = this.options.height * this.options.heightScale;
-
     if (this.object.position.y < groundY + playerHeight) {
       this.velocity.y = 0;
       this.object.position.y = groundY + playerHeight;
@@ -274,10 +342,8 @@ export class Player {
     this.viewBobbing.update(dt, isMoving);
     this.punchHandler.update(dt);
 
-    // Handle smooth zooming by interpolating camera FOV when using a perspective camera
     if (this.camera instanceof THREE.PerspectiveCamera) {
       const targetFov = this.isZooming ? this.zoomFov : this.defaultFov;
-      // Simple exponential lerp for smooth motion
       const zoomParameter = 1 - Math.exp(-this.zoomSpeed * dt);
       const updatedFov =
         this.camera.fov + (targetFov - this.camera.fov) * zoomParameter;

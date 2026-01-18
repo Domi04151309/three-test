@@ -131,3 +131,42 @@ kbd {
   border-radius: 6px;
   vertical-align: middle;
 }
+
+/* Hotbar (9 slots) */
+#hotbar {
+  position: fixed;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 8px;
+  z-index: 1500;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+#hotbar .slot {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  border-radius: 6px;
+  background: rgb(0 0 0 / 55%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: bold;
+  font-size: 12px;
+  border: 1px solid transparent;
+}
+
+#hotbar .slot.selected {
+  border-color: #fff;
+}
+
+#hotbar .slot span {
+  position: absolute;
+  top: 0;
+  right: 4px;
+}

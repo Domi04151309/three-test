@@ -19,6 +19,7 @@ export default defineConfig(
     ...js.configs.all,
     rules: {
       ...js.configs.all.rules,
+      complexity: 'off',
       curly: 'off',
       'func-style': [
         'error',
@@ -148,6 +149,7 @@ export default defineConfig(
     ...unicorn.configs.all,
     rules: {
       ...unicorn.configs.all.rules,
+      'unicorn/consistent-function-scoping': 'off',
       'unicorn/no-array-callback-reference': 'off',
       'unicorn/no-array-reduce': 'off',
       'unicorn/no-empty-file': 'off',
