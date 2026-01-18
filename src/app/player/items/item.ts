@@ -8,6 +8,8 @@ export interface ItemOptions {
   mtlFile: string;
   scale?: number;
   rotation?: THREE.Euler;
+  previewRotation?: THREE.Euler;
+  previewOffset?: THREE.Vector3;
   position?: THREE.Vector3;
   material?: THREE.Material;
 }
@@ -22,6 +24,14 @@ export class Item {
 
   get object(): THREE.Object3D | null {
     return this.group;
+  }
+
+  get previewRotation(): THREE.Euler | undefined {
+    return this.options.previewRotation;
+  }
+
+  get previewOffset(): THREE.Vector3 | undefined {
+    return this.options.previewOffset;
   }
 
   protected async load(): Promise<void> {

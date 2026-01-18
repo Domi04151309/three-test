@@ -46,7 +46,12 @@ export function createHotbarPreview(item: Item, size = 64): HotbarPreviewEntry {
   boundingAfter.getCenter(centerAfter);
   cloned.position.sub(centerAfter);
 
-  cloned.rotation.y = Math.PI / 6;
+  if (item.previewRotation) cloned.rotation.copy(item.previewRotation);
+  else cloned.rotation.y = Math.PI / 6;
+
+  const { previewOffset } = item;
+  if (previewOffset) cloned.position.add(previewOffset);
+
   scene.add(cloned);
 
   const cameraDistance =

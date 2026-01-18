@@ -9,6 +9,8 @@ export class Pickaxe extends Item {
       mtlFile: 'pickaxe.mtl',
       scale: 0.2,
       rotation: new THREE.Euler(-Math.PI / 2, Math.PI / 2, 0),
+      previewRotation: new THREE.Euler(0, 0, -Math.PI / 2),
+      previewOffset: new THREE.Vector3(-0.2, 0, 0),
       position: new THREE.Vector3(0, 1, 0.6),
     };
     super(options);
