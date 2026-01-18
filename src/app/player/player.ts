@@ -9,7 +9,11 @@ import { PunchHandler } from './punch-handler';
 export class Player {
   public object: THREE.Object3D;
   private controls: PointerLockControls;
-  private camera: THREE.Camera;
+  private camera: THREE.PerspectiveCamera;
+  private isZooming = false;
+  private readonly zoomFov = 20;
+  private readonly zoomSpeed = 10;
+  private defaultFov = 75;
   private blocker: HTMLElement | null = null;
   private viewModel: THREE.Group;
   private rightHand: THREE.Mesh;
@@ -29,12 +33,13 @@ export class Player {
   private lastTouchY = 0;
 
   constructor(
-    camera: THREE.Camera,
+    camera: THREE.PerspectiveCamera,
     domElement: HTMLElement,
     options: PlayerOptions,
   ) {
     this.camera = camera;
     this.camera.rotation.order = 'YXZ';
+    this.defaultFov = this.camera.fov;
     this.options = options;
     this.controls = new PointerLockControls(camera, domElement);
     this.object = this.controls.object;
@@ -134,6 +139,9 @@ export class Player {
       case 'ShiftLeft':
       case 'ShiftRight':
         this.isSprinting = down;
+        break;
+      case 'KeyC':
+        this.isZooming = down;
         break;
       default:
         break;
@@ -265,5 +273,18 @@ export class Player {
       this.moveForward || this.moveBackward || this.moveLeft || this.moveRight;
     this.viewBobbing.update(dt, isMoving);
     this.punchHandler.update(dt);
+
+    // Handle smooth zooming by interpolating camera FOV when using a perspective camera
+    if (this.camera instanceof THREE.PerspectiveCamera) {
+      const targetFov = this.isZooming ? this.zoomFov : this.defaultFov;
+      // Simple exponential lerp for smooth motion
+      const zoomParameter = 1 - Math.exp(-this.zoomSpeed * dt);
+      const updatedFov =
+        this.camera.fov + (targetFov - this.camera.fov) * zoomParameter;
+      if (Math.abs(updatedFov - this.camera.fov) > 0.01) {
+        this.camera.fov = updatedFov;
+        this.camera.updateProjectionMatrix();
+      }
+    }
   }
 }
