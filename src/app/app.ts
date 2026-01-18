@@ -6,9 +6,9 @@ import { SkyController } from './sky/sky';
 import { Terrain } from './terrain/terrain';
 import { createRenderer } from './renderer';
 import { Fireflies } from './effects/fireflies';
-import { Compass } from './compass';
-import { PositionDisplay } from './position';
-import { FullscreenMap } from './fullscreen-map';
+import { Compass } from './gui/compass';
+import { PositionDisplay } from './gui/position';
+import { FullscreenMap } from './gui/fullscreen-map';
 
 export function startApp(container: HTMLDivElement): void {
   const stats = new Stats();

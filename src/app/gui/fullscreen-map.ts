@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { terrainOptions } from './terrain/terrain-options';
+import { terrainOptions } from '../terrain/terrain-options';
 
 type TerrainLike = {
   getHeightAt: (x: number, z: number) => number;
