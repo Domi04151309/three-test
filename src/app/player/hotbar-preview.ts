@@ -3,11 +3,50 @@ import { Item } from './items/item';
 
 export type HotbarPreviewEntry = {
   canvas: HTMLCanvasElement;
-  renderer: THREE.WebGLRenderer;
   scene: THREE.Scene;
   camera: THREE.PerspectiveCamera;
   object: THREE.Object3D;
+  size: number;
 };
+
+// Shared renderer used for all previews to avoid creating many WebGL contexts
+class SharedPreviewRenderer {
+  private static instance: SharedPreviewRenderer | null = null;
+  readonly renderer: THREE.WebGLRenderer;
+
+  private constructor() {
+    const canvas = document.createElement('canvas');
+    this.renderer = new THREE.WebGLRenderer({
+      canvas,
+      alpha: true,
+      antialias: true,
+    });
+  }
+
+  static getInstance(): SharedPreviewRenderer {
+    if (!SharedPreviewRenderer.instance)
+      SharedPreviewRenderer.instance = new SharedPreviewRenderer();
+    return SharedPreviewRenderer.instance;
+  }
+
+  renderToCanvas(
+    scene: THREE.Scene,
+    camera: THREE.PerspectiveCamera,
+    target: HTMLCanvasElement,
+    size: number,
+  ): void {
+    const { renderer } = this;
+    const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+    renderer.setPixelRatio(pixelRatio);
+    renderer.setSize(size, size, false);
+    renderer.render(scene, camera);
+    const source = renderer.domElement;
+    const context = target.getContext('2d');
+    if (!context) return;
+    context.clearRect(0, 0, size, size);
+    context.drawImage(source, 0, 0, size, size);
+  }
+}
 
 export function createHotbarPreview(item: Item, size = 64): HotbarPreviewEntry {
   if (!item.object) throw new Error('Item object is required');
@@ -15,14 +54,6 @@ export function createHotbarPreview(item: Item, size = 64): HotbarPreviewEntry {
   const canvas = document.createElement('canvas');
   canvas.width = size;
   canvas.height = size;
-
-  const renderer = new THREE.WebGLRenderer({
-    canvas,
-    alpha: true,
-    antialias: true,
-  });
-  renderer.setSize(size, size);
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
 
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 1000);
@@ -63,32 +94,36 @@ export function createHotbarPreview(item: Item, size = 64): HotbarPreviewEntry {
   camera.position.set(0, 0, cameraDistance + 0.2);
   camera.lookAt(new THREE.Vector3(0, 0, 0));
 
-  renderer.render(scene, camera);
+  // Render into target canvas using shared renderer
+  SharedPreviewRenderer.getInstance().renderToCanvas(
+    scene,
+    camera,
+    canvas,
+    size,
+  );
 
   return {
     canvas,
-    renderer,
     scene,
     camera,
     object: cloned,
+    size,
   };
 }
 
 export function disposeHotbarPreview(entry: HotbarPreviewEntry): void {
   if (entry.canvas.parentElement) entry.canvas.remove();
-  entry.renderer.dispose();
   entry.scene.traverse((child) => {
-    const mesh = child as THREE.Mesh | undefined;
-    if (mesh) {
-      mesh.geometry.dispose();
-      const { material } = mesh;
-      if (Array.isArray(material)) {
-        for (const materialElement of material) {
-          materialElement.dispose();
-        }
-      } else {
-        material.dispose();
+    if (!(child instanceof THREE.Mesh)) return;
+    const mesh = child as THREE.Mesh;
+    mesh.geometry.dispose();
+    const { material } = mesh;
+    if (Array.isArray(material)) {
+      for (const mat of material) {
+        mat.dispose();
       }
+    } else {
+      material.dispose();
     }
   });
 }

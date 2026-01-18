@@ -1,3 +1,9 @@
+:root {
+  --background: rgb(0 0 0 / 60%);
+  --dim-overlay: rgb(0 0 0 / 60%);
+  --border-radius: 8px;
+}
+
 * {
   user-select: none;
 }
@@ -10,14 +16,14 @@ body,
   margin: 0;
   font-family: system-ui;
   overflow: clip;
+  color: #fff;
 }
 
 .card {
-  background-color: rgb(0 0 0 / 55%);
-  color: #fff;
+  background-color: var(--background);
   padding: 6px 10px;
   font-size: 14px;
-  border-radius: 6px;
+  border-radius: var(--border-radius);
   pointer-events: none;
 }
 
@@ -27,7 +33,7 @@ body,
   left: 0;
   width: 100%;
   height: 100%;
-  background-color: rgb(0 0 0 / 50%);
+  background-color: var(--dim-overlay);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -35,12 +41,13 @@ body,
 }
 
 #instructions {
-  color: #fff;
   font-size: 18px;
   padding: 12px 18px;
-  background: rgb(0 0 0 / 60%);
-  border-radius: 6px;
+  background: var(--background);
+  border-radius: var(--border-radius);
   cursor: pointer;
+  opacity: 0;
+  animation: instructions-fade-in 160ms ease 0.3s forwards;
 }
 
 /* Crosshair in the center of the screen */
@@ -102,7 +109,7 @@ body,
 #map canvas {
   height: 80%;
   aspect-ratio: 1;
-  border-radius: 6px;
+  border-radius: var(--border-radius);
 }
 
 /* Legend */
@@ -110,7 +117,6 @@ body,
   position: fixed;
   bottom: 16px;
   right: 16px;
-  color: #fff;
   font-size: 14px;
   list-style: none;
   font-weight: bold;
@@ -128,7 +134,7 @@ kbd {
   background: #fafafa;
   margin-top: 4px;
   border-bottom: 4px solid #bdbdbd;
-  border-radius: 6px;
+  border-radius: var(--border-radius);
   vertical-align: middle;
 }
 
@@ -150,12 +156,11 @@ kbd {
   position: relative;
   width: 48px;
   height: 48px;
-  border-radius: 6px;
-  background: rgb(0 0 0 / 55%);
+  border-radius: var(--border-radius);
+  background: var(--background);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #fff;
   font-weight: bold;
   font-size: 12px;
   border: 1px solid transparent;
@@ -169,4 +174,50 @@ kbd {
   position: absolute;
   top: 0;
   right: 4px;
+}
+
+/* Inventory overlay */
+#inventory-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+#inventory-hotbar {
+  display: flex;
+  gap: var(--border-radius);
+  list-style: none;
+  padding: var(--border-radius);
+  background: var(--background);
+  border-radius: var(--border-radius);
+}
+
+#inventory-hotbar .slot {
+  width: 96px;
+  height: 96px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--background);
+  border-radius: calc(var(--border-radius) / 2);
+  position: relative;
+}
+
+.dragging-preview {
+  position: fixed;
+  pointer-events: none;
+  z-index: 10000;
+}
+
+@keyframes instructions-fade-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }

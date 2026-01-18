@@ -4,19 +4,42 @@ export function attachPlayerInputHandlers(
   player: Player,
   domElement: HTMLElement,
 ): () => void {
+  const isBlockedByMenu = (): boolean => {
+    const { blocker } = player;
+    if (!blocker) return false;
+    const style = globalThis.getComputedStyle(blocker);
+    return style.display !== 'none';
+  };
+
   const onKeyDown = (event: KeyboardEvent) => {
+    // Always allow inventory toggle to pass through so player can open/close
+    // Inventory even when the pause blocker is visible.
+    if (event.code === 'KeyE') {
+      player.handleKey(event.code, true);
+      return;
+    }
+    if (isBlockedByMenu()) return;
     player.handleKey(event.code, true);
   };
 
   const onKeyUp = (event: KeyboardEvent) => {
+    if (event.code === 'KeyE') {
+      player.handleKey(event.code, false);
+      return;
+    }
+    if (isBlockedByMenu()) return;
     player.handleKey(event.code, false);
   };
 
   const onMouseDown = (event: MouseEvent) => {
     if (event.button !== 0) return;
+    if (isBlockedByMenu()) return;
+    // Disable punch while inventory is open
+    if (player.inventoryOpen) return;
     player.startPunch();
   };
   const onWheel = (event: WheelEvent) => {
+    if (isBlockedByMenu()) return;
     player.wheelAccumulator += event.deltaY;
     const threshold = 100;
     if (Math.abs(player.wheelAccumulator) < threshold) return;
@@ -30,6 +53,7 @@ export function attachPlayerInputHandlers(
   };
 
   const onTouchStart = (event: TouchEvent) => {
+    if (isBlockedByMenu()) return;
     if (event.touches.length !== 1) return;
     const [touch] = event.touches;
     player.touchId = touch.identifier;
@@ -40,6 +64,7 @@ export function attachPlayerInputHandlers(
   };
 
   const onTouchMove = (event: TouchEvent) => {
+    if (isBlockedByMenu()) return;
     if (player.touchId === null) return;
     let touch: Touch | null = null;
     for (let index = 0; index < event.touches.length; index++) {
@@ -66,6 +91,7 @@ export function attachPlayerInputHandlers(
   };
 
   const onTouchEnd = (event: TouchEvent) => {
+    if (isBlockedByMenu()) return;
     if (player.touchId === null) return;
     let stillActive = false;
     for (let index = 0; index < event.touches.length; index++) {
