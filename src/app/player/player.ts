@@ -9,6 +9,7 @@ import { PunchHandler } from './punch-handler';
 import { InventoryManager } from './inventory';
 import { attachPlayerInputHandlers } from './player-inputs';
 import { Pickaxe } from './items/pickaxe';
+import { updateHotbarUI } from './inventory-overlay';
 
 export class Player {
   object: THREE.Object3D;
@@ -72,14 +73,14 @@ export class Player {
     (async () => {
       const pickaxe = await Pickaxe.create();
       this.inventoryManager.inventory[1] = pickaxe;
-      this.inventoryManager.updateHotbarUI();
+      updateHotbarUI(this.inventoryManager);
     })().catch(console.error);
 
     // Load axe for inventory slot 3.
     (async () => {
       const axe = await Axe.create();
       this.inventoryManager.inventory[2] = axe;
-      this.inventoryManager.updateHotbarUI();
+      updateHotbarUI(this.inventoryManager);
     })().catch(console.error);
 
     // Initialize helpers for view bobbing and punching
@@ -170,7 +171,7 @@ export class Player {
       case 'Digit9':
         if (down) {
           const slot = Number(code.replace('Digit', '')) - 1;
-          if (!Number.isNaN(slot)) this.inventoryManager.selectSlot(slot);
+          if (!Number.isNaN(slot)) this.inventoryManager.equipSlot(slot);
         }
         break;
       default:

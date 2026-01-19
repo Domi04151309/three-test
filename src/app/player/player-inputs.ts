@@ -52,7 +52,7 @@ export function attachPlayerInputHandlers(
     // If currentSlot is outside hotbar (e.g. -1 or >8), clamp into hotbar range
     if (next >= hotbarLength || next < 0) next = 0;
     next = (next + directionSign + hotbarLength) % hotbarLength;
-    player.inventoryManager.selectSlot(next);
+    player.inventoryManager.equipSlot(next);
   };
 
   const onTouchStart = (event: TouchEvent) => {

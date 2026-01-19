@@ -2,7 +2,8 @@ import * as THREE from 'three';
 import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockControls';
 import { Item } from './items/item';
 import type { HotbarPreviewEntry } from './hotbar-preview';
-import * as InventoryUI from './inventory-ui';
+import { updateHotbarUI } from './inventory-overlay';
+import { closeInventory, openInventory } from './inventory-ui';
 
 interface InventoryHost {
   controls: PointerLockControls;
@@ -36,20 +37,8 @@ export class InventoryManager {
   }
 
   toggleInventory(): void {
-    if (this.inventoryOpen) this.closeInventory();
-    else this.openInventory();
-  }
-
-  private openInventory(): void {
-    InventoryUI.openInventory(this);
-  }
-
-  private closeInventory(): void {
-    InventoryUI.closeInventory(this);
-  }
-
-  selectSlot(index: number): void {
-    this.equipSlot(index);
+    if (this.inventoryOpen) closeInventory(this);
+    else openInventory(this);
   }
 
   equipSlot(index: number): void {
@@ -65,9 +54,6 @@ export class InventoryManager {
     const next = this.inventory[this.currentSlot];
     if (next && next.object) this.rightHand.add(next.object);
 
-    this.updateHotbarUI();
-  }
-  updateHotbarUI(): void {
-    InventoryUI.updateHotbarUI(this);
+    updateHotbarUI(this);
   }
 }
