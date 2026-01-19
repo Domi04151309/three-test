@@ -45,10 +45,13 @@ export function attachPlayerInputHandlers(
     if (Math.abs(player.wheelAccumulator) < threshold) return;
     const directionSign = player.wheelAccumulator > 0 ? 1 : -1;
     player.wheelAccumulator = 0;
-    const inventoryLength = player.inventoryManager.inventory.length;
+    // Only cycle through the hotbar (first 9 slots), not the whole inventory
+    const hotbarLength = 9;
     let next = player.inventoryManager.currentSlot;
     if (next === -1) next = 0;
-    next = (next + directionSign + inventoryLength) % inventoryLength;
+    // If currentSlot is outside hotbar (e.g. -1 or >8), clamp into hotbar range
+    if (next >= hotbarLength || next < 0) next = 0;
+    next = (next + directionSign + hotbarLength) % hotbarLength;
     player.inventoryManager.selectSlot(next);
   };
 

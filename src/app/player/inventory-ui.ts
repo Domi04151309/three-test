@@ -37,11 +37,30 @@ export function openInventory(manager: InventoryManager): void {
   title.id = 'inventory-title';
   title.textContent = 'Inventory';
 
+  // Main inventory grid (27 slots: indexes 9..35)
+  const mainGrid = document.createElement('ul');
+  mainGrid.id = 'inventory-grid';
+  mainGrid.classList.add('inventory-grid');
+
+  for (let index = 9; index < manager.inventory.length; index++) {
+    const li = document.createElement('li');
+    li.classList.add('slot');
+    li.dataset.slot = String(index);
+    li.classList.add('inventory-slot');
+
+    li.addEventListener('click', (event) => {
+      event.stopPropagation();
+      handleInventorySlotClick(manager, index);
+    });
+
+    mainGrid.append(li);
+  }
+
+  // Hotbar row for overlay (first 9 slots)
   const hotbarWrap = document.createElement('ul');
   hotbarWrap.id = 'inventory-hotbar';
   hotbarWrap.classList.add('inventory-hotbar');
-
-  for (let index = 0; index < manager.inventory.length; index++) {
+  for (let index = 0; index < 9; index++) {
     const li = document.createElement('li');
     li.classList.add('slot');
     li.dataset.slot = String(index);
@@ -55,7 +74,7 @@ export function openInventory(manager: InventoryManager): void {
     hotbarWrap.append(li);
   }
 
-  overlay.append(title, hotbarWrap);
+  overlay.append(title, mainGrid, hotbarWrap);
   document.body.append(overlay);
   manager.inventoryOverlay = overlay;
 
@@ -100,18 +119,15 @@ export function closeInventory(manager: InventoryManager): void {
   }
 
   if (manager.inventoryOverlay) {
-    const hotbarWrap =
-      manager.inventoryOverlay.querySelector('#inventory-hotbar');
-    if (hotbarWrap) {
-      const children = [...hotbarWrap.children];
-      for (const li of children) {
-        const slotElement = li as HTMLElement & {
-          preview?: HotbarPreviewEntry | null;
-        };
-        const { preview } = slotElement;
-        if (preview) disposeHotbarPreview(preview);
-        slotElement.preview = null;
-      }
+    const slotElements =
+      manager.inventoryOverlay.querySelectorAll('.inventory-slot');
+    for (const li of slotElements) {
+      const slotElement = li as HTMLElement & {
+        preview?: HotbarPreviewEntry | null;
+      };
+      const { preview } = slotElement;
+      if (preview) disposeHotbarPreview(preview);
+      slotElement.preview = null;
     }
     manager.inventoryOverlay.remove();
     manager.inventoryOverlay = null;
@@ -166,7 +182,7 @@ export function handleInventorySlotClick(
       disposeHotbarPreview(manager.draggingPreview);
       manager.draggingPreview = null;
     }
-    manager.draggingPreview = createHotbarPreview(manager.draggingItem, 96);
+    manager.draggingPreview = createHotbarPreview(manager.draggingItem, 64);
     const { canvas } = manager.draggingPreview;
     Object.assign(canvas.style, {
       position: 'fixed',
@@ -221,7 +237,7 @@ export function handleInventorySlotClick(
     manager.draggingPreview = null;
   }
 
-  manager.draggingPreview = createHotbarPreview(manager.draggingItem, 96);
+  manager.draggingPreview = createHotbarPreview(manager.draggingItem, 64);
   const { canvas } = manager.draggingPreview;
   Object.assign(canvas.style, {
     position: 'fixed',
@@ -239,19 +255,18 @@ export function handleInventorySlotClick(
 
 export function updateInventoryOverlay(manager: InventoryManager): void {
   if (!manager.inventoryOverlay) return;
-  const hotbarWrap =
-    manager.inventoryOverlay.querySelector('#inventory-hotbar');
-  if (!hotbarWrap) return;
-  const children = [...hotbarWrap.children];
-  for (const [index, li] of children.entries()) {
-    const slotElement = li as HTMLElement & {
+  const slotElements =
+    manager.inventoryOverlay.querySelectorAll('.inventory-slot');
+  for (const element of slotElements) {
+    const slotElement = element as HTMLElement & {
       preview?: HotbarPreviewEntry | null;
     };
     const old = slotElement.querySelector('canvas');
     if (old) old.remove();
+    const index = Number(slotElement.dataset.slot);
     const item = manager.inventory[index];
     if (item && item.object) {
-      const entry = createHotbarPreview(item, 96);
+      const entry = createHotbarPreview(item, 64);
       slotElement.append(entry.canvas);
       slotElement.preview = entry;
     } else if (slotElement.preview) {

@@ -12,8 +12,10 @@ export class InventoryManager {
   host: InventoryHost;
   controls: PointerLockControls;
   rightHand: THREE.Mesh;
-  inventory: (Item | null)[] = Array.from({ length: 9 }, () => null);
+  // 27 main inventory slots + 9 hotbar slots = 36 total
+  inventory: (Item | null)[] = Array.from({ length: 36 }, () => null);
   currentSlot = -1;
+  // Only the hotbar (first 9 slots) needs renderers for the on-screen hotbar
   hotbarRenderers: (HotbarPreviewEntry | null)[] = Array.from(
     { length: 9 },
     () => null,
