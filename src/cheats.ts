@@ -7,10 +7,27 @@ export class Cheats {
   help(): this {
     console.table({
       'help()': 'Show this message',
+      'health(value)': 'Set player health (0..maxHealth)',
       'time(value)': 'Set normalized time of day (0..1)',
       'teleport(x, y, z)': 'Move the player to the given coordinates',
     });
     return this;
+  }
+
+  health(value: number): void {
+    if (typeof value !== 'number' || Number.isNaN(value)) {
+      console.warn('Health expects a numeric argument');
+      return;
+    }
+
+    if (!Number.isFinite(value)) {
+      console.warn('Health expects a finite numeric value');
+      return;
+    }
+
+    this.app.player.setHealth(value);
+
+    console.log('Player health set to', value);
   }
 
   time(value: number): void {

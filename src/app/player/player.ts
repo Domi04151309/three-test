@@ -25,6 +25,11 @@ export class Player {
   inventoryManager!: InventoryManager;
   viewBobbing: ViewBobbing;
   punchHandler: PunchHandler;
+  maxHealth = 100;
+  health = 100;
+  healthElement: HTMLElement | null = null;
+  healthFillElement: HTMLElement | null = null;
+  healthTextElement: HTMLElement | null = null;
   velocity: THREE.Vector3;
   direction: THREE.Vector3;
   moveForward = false;
@@ -101,6 +106,46 @@ export class Player {
     this.direction = new THREE.Vector3();
 
     this.detachInputs = attachPlayerInputHandlers(this, domElement);
+
+    this.healthElement = document.getElementById('health');
+    this.healthFillElement = document.getElementById('health-fill');
+    this.healthTextElement = document.getElementById('health-text');
+    this.updateHealthUI();
+  }
+
+  takeDamage(amount: number): void {
+    const dmg = Math.abs(amount);
+    this.health = Math.max(0, this.health - dmg);
+    this.updateHealthUI();
+    if (this.health <= 0) this.handleDeath();
+  }
+
+  heal(amount: number): void {
+    const value = Math.abs(amount);
+    this.health = Math.min(this.maxHealth, this.health + value);
+    this.updateHealthUI();
+  }
+
+  setHealth(value: number): void {
+    this.health = Math.max(0, Math.min(this.maxHealth, value));
+    this.updateHealthUI();
+    if (this.health <= 0) this.handleDeath();
+  }
+
+  private updateHealthUI(): void {
+    if (this.healthFillElement) {
+      const percentage = (this.health / this.maxHealth) * 100;
+      this.healthFillElement.style.width = `${percentage.toString()}%`;
+    }
+    if (this.healthTextElement) {
+      this.healthTextElement.textContent = `${Math.round(this.health).toString()} / ${this.maxHealth.toString()}`;
+    }
+  }
+
+  private handleDeath(): void {
+    console.log('Player died');
+    this.controls.unlock();
+    if (this.blocker) this.blocker.style.display = 'flex';
   }
 
   enablePointerLockUI(
