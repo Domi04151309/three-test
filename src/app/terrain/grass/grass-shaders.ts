@@ -39,12 +39,12 @@ vec3 rotateVectorByQuaternion(vec3 v, vec4 q){
 }
 
 void main() {
-
   frc = position.y / float(1.0);
+  float realScale = scale * 4.0;
   vec3 localPos = position;
-  localPos.y *= scale;
+  localPos.y *= realScale;
   vec3 localNormal = normal;
-  localNormal.y /= scale;
+  localNormal.y /= realScale;
 
   vec4 direction = vec4(0.0, halfRootAngle.x, 0.0, halfRootAngle.y);
   localPos = rotateVectorByQuaternion(localPos, direction);
@@ -63,7 +63,7 @@ void main() {
   float halfAngle = -noise * 0.1;
   noise = 0.5 + 0.5 * cos(fractionalPos.y + time);
   halfAngle -= noise * 0.05;
-  direction = normalize(vec4(sin(halfAngle), 0.0, -sin(halfAngle), cos(halfAngle)));
+  direction = vec4(sin(halfAngle), 0.0, -sin(halfAngle), cos(halfAngle));
   localPos = rotateVectorByQuaternion(localPos, direction);
   localNormal = rotateVectorByQuaternion(localNormal, direction);
   localPos += pos;

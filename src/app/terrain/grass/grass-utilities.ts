@@ -4,10 +4,10 @@ const MAX_GRASS_HEIGHT = 256;
 
 export function populateInstanceAttributes(options: {
   instances: number;
-  indices: Float32Array;
+  indices: Uint16Array;
   offsets: Float32Array;
-  scales: Float32Array;
-  halfRootAngles: Float32Array;
+  scales: Uint16Array;
+  halfRootAngles: Int16Array;
   width: number;
   centerX: number;
   centerZ: number;
@@ -33,7 +33,7 @@ export function populateInstanceAttributes(options: {
   const instancesLocal = instances;
 
   for (let index = 0; index < instancesLocal; index++) {
-    indices[index] = index / instancesLocal;
+    indices[index] = (index / instancesLocal) * 65_535;
     const x = Math.random() * width - width / 2;
     const z = Math.random() * width - width / 2;
     const y = sampleHeight(centerX + x, centerZ + z);
@@ -66,10 +66,11 @@ export function populateInstanceAttributes(options: {
     offsets[offsetBase + 2] = z;
     const angleRoot = Math.PI - Math.random() * (2 * Math.PI);
     const halfBase = placedCount * 2;
-    halfRootAngles[halfBase + 0] = Math.sin(0.5 * angleRoot);
-    halfRootAngles[halfBase + 1] = Math.cos(0.5 * angleRoot);
+    halfRootAngles[halfBase + 0] = Math.sin(0.5 * angleRoot) * 32_767;
+    halfRootAngles[halfBase + 1] = Math.cos(0.5 * angleRoot) * 32_767;
     scales[placedCount] =
-      index % 3 !== 0 ? 2 + Math.random() * 1.25 : 2 + Math.random();
+      ((index % 3 !== 0 ? 2 + Math.random() * 1.25 : 2 + Math.random()) / 4) *
+      65_535;
     placedCount++;
   }
 

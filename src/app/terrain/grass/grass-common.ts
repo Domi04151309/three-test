@@ -148,10 +148,10 @@ export function createInstancedGeometry(options: {
   instancedGeometry.attributes.uv = baseGeom.attributes.uv;
   instancedGeometry.attributes.normal = baseGeom.attributes.normal;
 
-  const indices = new Float32Array(instances);
+  const indices = new Uint16Array(instances);
   const offsets = new Float32Array(instances * 3);
-  const scales = new Float32Array(instances);
-  const halfRootAngles = new Float32Array(instances * 2);
+  const scales = new Uint16Array(instances);
+  const halfRootAngles = new Int16Array(instances * 2);
 
   const placedCount = populateInstanceAttributes({
     instances,
@@ -172,18 +172,23 @@ export function createInstancedGeometry(options: {
   );
   instancedGeometry.setAttribute(
     'scale',
-    new THREE.InstancedBufferAttribute(scales.subarray(0, placedCount), 1),
+    new THREE.InstancedBufferAttribute(
+      scales.subarray(0, placedCount),
+      1,
+      true,
+    ),
   );
   instancedGeometry.setAttribute(
     'halfRootAngle',
     new THREE.InstancedBufferAttribute(
       halfRootAngles.subarray(0, placedCount * 2),
       2,
+      true,
     ),
   );
   instancedGeometry.setAttribute(
     'index',
-    new THREE.InstancedBufferAttribute(indices, 1),
+    new THREE.InstancedBufferAttribute(indices, 1, true),
   );
   instancedGeometry.instanceCount = placedCount;
 
