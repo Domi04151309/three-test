@@ -69,6 +69,7 @@ export function generateTreesForChunk(
     baseOakTrees: THREE.LOD[];
     baseAspenTrees: THREE.LOD[];
     basePineTrees: THREE.LOD[];
+    baseBushes: THREE.LOD[];
     centerX: number;
     centerZ: number;
     chunkPlaneWidth: number;
@@ -81,7 +82,8 @@ export function generateTreesForChunk(
   const totalPrototypes =
     options.baseOakTrees.length +
     options.baseAspenTrees.length +
-    options.basePineTrees.length;
+    options.basePineTrees.length +
+    options.baseBushes.length;
   if (totalPrototypes === 0) return objects;
 
   const tx = options.centerX / options.cellSize;
@@ -141,16 +143,36 @@ export function generateTreesForChunk(
       ...treeNoiseOptions,
       offsetZ: options.seed + 11_000,
     });
-    const speciesScores = [pineScore, aspenScore, oakScore];
+    const bushScore = options.noiseGenerator.sampleOctaves(px, pz, {
+      ...treeNoiseOptions,
+      offsetZ: options.seed + 12_000,
+    });
+    const speciesScores = [pineScore, aspenScore, oakScore, bushScore];
     const speciesIndex = speciesScores.indexOf(Math.max(...speciesScores));
 
     // Select a prototype from the chosen species, falling back if empty
-    let chosenArray: THREE.LOD[] = options.baseOakTrees;
-    if (speciesIndex === 0) chosenArray = options.basePineTrees;
-    else if (speciesIndex === 1) chosenArray = options.baseAspenTrees;
+    let chosenArray: THREE.LOD[];
+    switch (speciesIndex) {
+      case 0:
+        chosenArray = options.basePineTrees;
+        break;
+      case 1:
+        chosenArray = options.baseAspenTrees;
+        break;
+      case 2:
+        chosenArray = options.baseOakTrees;
+        break;
+      case 3:
+        chosenArray = options.baseBushes;
+        break;
+      default:
+        chosenArray = options.baseOakTrees;
+    }
 
     if (chosenArray.length === 0) {
-      if (options.baseOakTrees.length > 0) chosenArray = options.baseOakTrees;
+      if (options.baseBushes.length > 0) chosenArray = options.baseBushes;
+      else if (options.baseOakTrees.length > 0)
+        chosenArray = options.baseOakTrees;
       else if (options.baseAspenTrees.length > 0)
         chosenArray = options.baseAspenTrees;
       else chosenArray = options.basePineTrees;

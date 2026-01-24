@@ -24,6 +24,7 @@ export class Terrain extends THREE.Group {
   private baseOakTrees: THREE.LOD[] = [];
   private baseAspenTrees: THREE.LOD[] = [];
   private basePineTrees: THREE.LOD[] = [];
+  private baseBushes: THREE.LOD[] = [];
 
   constructor(skyController: SkyController) {
     super();
@@ -39,6 +40,9 @@ export class Terrain extends THREE.Group {
       }
       for (const type of ['Pine Medium', 'Pine Large'] as TreePreset[]) {
         this.basePineTrees.push(Tree.create(type));
+      }
+      for (const type of ['Bush 1', 'Bush 3'] as TreePreset[]) {
+        this.baseBushes.push(Tree.create(type));
       }
     }
     const sampleChunks = 4;
@@ -79,6 +83,7 @@ export class Terrain extends THREE.Group {
       baseOakTrees: THREE.LOD[];
       baseAspenTrees: THREE.LOD[];
       basePineTrees: THREE.LOD[];
+      baseBushes: THREE.LOD[];
     } = {
       ...this.options,
       noiseGenerator: this.noiseGenerator,
@@ -86,6 +91,7 @@ export class Terrain extends THREE.Group {
       baseOakTrees: this.baseOakTrees,
       baseAspenTrees: this.baseAspenTrees,
       basePineTrees: this.basePineTrees,
+      baseBushes: this.baseBushes,
     };
 
     const entry = createChunkEntry(cx, cz, parameters);

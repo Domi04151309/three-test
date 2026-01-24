@@ -89,6 +89,7 @@ export function createChunkEntry(
     baseOakTrees: THREE.LOD[];
     baseAspenTrees: THREE.LOD[];
     basePineTrees: THREE.LOD[];
+    baseBushes: THREE.LOD[];
   },
 ): ChunkEntry {
   const offsetX = cx * parameters.chunkSize;
@@ -140,6 +141,7 @@ export function createChunkEntry(
     baseOakTrees: parameters.baseOakTrees,
     baseAspenTrees: parameters.baseAspenTrees,
     basePineTrees: parameters.basePineTrees,
+    baseBushes: parameters.baseBushes,
     centerX,
     centerZ,
     chunkPlaneWidth,
