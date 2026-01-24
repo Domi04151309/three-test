@@ -124,6 +124,7 @@ export function generateTreesForChunk(
     const worldZ = options.centerZ + rz;
     const y = options.sampleFromHeightData(worldX, worldZ);
     if (y <= options.waterLevel + 12) continue;
+    if (y >= 240) continue;
 
     // Per-tree species decision using local noise channels
     const px = worldX / options.cellSize;
