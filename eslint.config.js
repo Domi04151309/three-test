@@ -39,12 +39,7 @@ export default defineConfig(
       'max-lines-per-function': 'off',
       'max-params': ['warn', 5],
       'max-statements': ['warn', 50],
-      'no-console': [
-        'error',
-        {
-          allow: ['warn', 'error'],
-        },
-      ],
+      'no-console': 'off',
       'no-continue': 'off',
       'no-inline-comments': [
         'error',

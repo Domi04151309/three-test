@@ -33,6 +33,10 @@ export class SkyController extends THREE.Group {
     this.initWater();
   }
 
+  public setTimeOfDay(normalized: number): void {
+    this.timeOfDay = Math.max(0, Math.min(1, normalized));
+  }
+
   private initSky(): void {
     this.sky = new Sky();
     this.sky.scale.setScalar(450_000);

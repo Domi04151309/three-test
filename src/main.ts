@@ -1,4 +1,7 @@
-import { startApp } from './app/app';
+import { App } from './app/app';
+import { Cheats } from './cheats';
 
 const container = document.getElementById('app') as HTMLDivElement;
-startApp(container);
+const app = new App(container);
+
+new Cheats(app).install();
