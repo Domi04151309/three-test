@@ -161,6 +161,9 @@ export function createChunkEntry(
   });
 
   const objects = [...trees, ...flowers];
+  const lods = objects.filter(
+    (object) => object instanceof THREE.LOD,
+  ) as THREE.LOD[];
 
   const entry: ChunkEntry = {
     depth: cd,
@@ -168,6 +171,7 @@ export function createChunkEntry(
     heightData,
     mesh,
     objects,
+    lods,
     offsetX,
     offsetZ,
     width: cw,

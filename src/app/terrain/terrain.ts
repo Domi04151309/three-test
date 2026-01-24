@@ -10,6 +10,7 @@ import { Tree, TreePreset } from './tree';
 
 export class Terrain extends THREE.Group {
   private options: TerrainOptions = terrainOptions;
+  private cameraPosition: THREE.Vector3 = new THREE.Vector3();
   private lastChunkX?: number;
   private lastChunkZ?: number;
   private chunks: Map<string, TerrainChunk> = new Map();
@@ -174,25 +175,22 @@ export class Terrain extends THREE.Group {
   }
 
   update(camera: THREE.Camera, delta: number): void {
-    const camPos = new THREE.Vector3();
-    camera.getWorldPosition(camPos);
-    Grass.updateGlobalUniforms(delta, camPos, this.skyController);
+    camera.getWorldPosition(this.cameraPosition);
+    Grass.updateGlobalUniforms(delta, this.cameraPosition, this.skyController);
     // Propagate sun/ambient into terrain chunk materials
     const sunDirection = this.skyController.sun.clone().normalize();
     const sunIntensity = this.skyController.getSunIntensity();
     const ambientIntensity = this.skyController.getAmbientIntensity();
     for (const ch of this.chunks.values()) {
-      // Update the chunk material uniforms if present
-      const mat = ch.mesh.material as THREE.ShaderMaterial | THREE.Material;
-      const uniforms = (mat as THREE.ShaderMaterial).uniforms as Record<
-        string,
-        { value: unknown }
-      >;
-      (uniforms.sunDirection.value as THREE.Vector3).copy(sunDirection);
-      (uniforms.sunIntensity.value as number) = sunIntensity;
-      (uniforms.ambientIntensity.value as number) = ambientIntensity * 0.1;
+      // Update the chunk material uniforms if present (use cached ref)
+      const uniforms = ch.materialUniforms;
+      if (uniforms) {
+        (uniforms.sunDirection.value as THREE.Vector3).copy(sunDirection);
+        (uniforms.sunIntensity.value as number) = sunIntensity;
+        (uniforms.ambientIntensity.value as number) = ambientIntensity * 0.1;
+      }
 
-      ch.update(camera);
+      ch.update(this.cameraPosition, camera);
     }
   }
 

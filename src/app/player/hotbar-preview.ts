@@ -65,7 +65,8 @@ export function createHotbarPreview(item: Item, size = 64): HotbarPreviewEntry {
 
   const cloned = item.object.clone(true);
   const bounding = new THREE.Box3().setFromObject(cloned);
-  const boxSize = new THREE.Vector3();
+  const temporaryVector = new THREE.Vector3();
+  const boxSize = temporaryVector;
   bounding.getSize(boxSize);
 
   const maxDimension = Math.max(boxSize.x, boxSize.y, boxSize.z, 0.0001);
@@ -73,7 +74,7 @@ export function createHotbarPreview(item: Item, size = 64): HotbarPreviewEntry {
   cloned.scale.multiplyScalar(scaleFactor);
 
   const boundingAfter = new THREE.Box3().setFromObject(cloned);
-  const centerAfter = new THREE.Vector3();
+  const centerAfter = temporaryVector;
   boundingAfter.getCenter(centerAfter);
   cloned.position.sub(centerAfter);
 
@@ -85,14 +86,11 @@ export function createHotbarPreview(item: Item, size = 64): HotbarPreviewEntry {
 
   scene.add(cloned);
 
+  boundingAfter.getSize(temporaryVector);
   const cameraDistance =
-    Math.max(
-      boundingAfter.getSize(new THREE.Vector3()).x,
-      boundingAfter.getSize(new THREE.Vector3()).y,
-      boundingAfter.getSize(new THREE.Vector3()).z,
-    ) * 2.2;
+    Math.max(temporaryVector.x, temporaryVector.y, temporaryVector.z) * 2.2;
   camera.position.set(0, 0, cameraDistance + 0.2);
-  camera.lookAt(new THREE.Vector3(0, 0, 0));
+  camera.lookAt(0, 0, 0);
 
   // Render into target canvas using shared renderer
   SharedPreviewRenderer.getInstance().renderToCanvas(

@@ -9,6 +9,7 @@ function degToCardinal(deg: number): string {
 export class Compass {
   private element: HTMLDivElement;
   private previousText: string = '';
+  private direction: THREE.Vector3 = new THREE.Vector3();
 
   constructor() {
     this.element = document.createElement('div');
@@ -19,7 +20,7 @@ export class Compass {
   }
 
   update(camera: THREE.Camera): void {
-    const direction = new THREE.Vector3();
+    const { direction, element, previousText } = this;
     camera.getWorldDirection(direction);
     // Heading relative to world Z axis: atan2(x, z)
     const rad = Math.atan2(direction.x, direction.z);
@@ -27,9 +28,9 @@ export class Compass {
     const card = degToCardinal(deg);
 
     const text = `${card} ${Math.round(deg).toString()}°`;
-    if (text !== this.previousText) {
+    if (text !== previousText) {
       this.previousText = text;
-      this.element.textContent = text;
+      element.textContent = text;
     }
   }
 }

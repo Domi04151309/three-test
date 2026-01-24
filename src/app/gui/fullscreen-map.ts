@@ -20,6 +20,7 @@ export class FullscreenMap {
   private imageData: ImageData;
   private visible = false;
   private redrawNext = false;
+  private direction: THREE.Vector3 = new THREE.Vector3();
 
   constructor(terrain: TerrainLike) {
     this.terrain = terrain;
@@ -170,24 +171,23 @@ export class FullscreenMap {
     half: number,
     resolution: number,
   ) {
+    const { context, direction } = this;
     const size = Math.max(4, resolution * 0.01);
-    this.context.save();
-    this.context.translate(half, half);
-
-    const direction = new THREE.Vector3();
+    context.save();
+    context.translate(half, half);
     camera.getWorldDirection(direction);
     const angle = Math.atan2(direction.x, direction.z);
-    this.context.rotate(angle);
+    context.rotate(angle);
 
-    this.context.fillStyle = '#fff';
-    this.context.beginPath();
-    this.context.moveTo(0, -size);
-    this.context.lineTo(size * 0.7, size);
-    this.context.lineTo(-size * 0.7, size);
-    this.context.closePath();
-    this.context.fill();
+    context.fillStyle = '#fff';
+    context.beginPath();
+    context.moveTo(0, -size);
+    context.lineTo(size * 0.7, size);
+    context.lineTo(-size * 0.7, size);
+    context.closePath();
+    context.fill();
 
-    this.context.restore();
+    context.restore();
   }
 
   private static overlayAlphaForHeight(height: number, waterLevel: number) {

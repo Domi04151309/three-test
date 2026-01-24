@@ -10,6 +10,7 @@ export interface ChunkEntry {
   offsetZ: number;
   grass: Grass;
   objects: THREE.Object3D[];
+  lods?: THREE.LOD[];
 }
 
 export class TerrainChunk {
@@ -21,9 +22,15 @@ export class TerrainChunk {
   public offsetZ: number;
   public grass: Grass;
   public objects: THREE.Object3D[];
+  public lods: THREE.LOD[];
+  public materialUniforms: Record<string, { value: unknown }> | null = null;
 
   constructor(entry: ChunkEntry) {
     this.mesh = entry.mesh;
+    const matAny = this.mesh.material as unknown as {
+      uniforms?: Record<string, { value: unknown }>;
+    } | null;
+    this.materialUniforms = matAny?.uniforms ?? null;
     this.heightData = entry.heightData;
     this.width = entry.width;
     this.depth = entry.depth;
@@ -31,6 +38,7 @@ export class TerrainChunk {
     this.offsetZ = entry.offsetZ;
     this.grass = entry.grass;
     this.objects = entry.objects;
+    this.lods = entry.lods || [];
   }
 
   addTo(parent: THREE.Group) {
@@ -47,17 +55,15 @@ export class TerrainChunk {
     return this.heightData[index] || 0;
   }
 
-  update(camera: THREE.Camera) {
+  update(cameraPos: THREE.Vector3, camera: THREE.Camera) {
     // Update grass and other per-chunk items. Water is managed globally by SkyController.
-    // Use camera world position for LOD checks — camera.position may be local.
-    const camPos = new THREE.Vector3();
-    camera.getWorldPosition(camPos);
-    this.grass.update(camPos);
-    // Update any LOD objects in this chunk (including nested LODs)
-    for (const object of this.objects)
-      object.traverse((child) => {
-        if (child instanceof THREE.LOD) child.update(camera);
-      });
+    // `cameraPos` is provided by the caller to avoid allocating per-chunk vectors.
+    this.grass.update(cameraPos);
+    // Update LODs directly (collected at creation) to avoid traversing all
+    // Object hierarchies each frame.
+    for (let index = 0; index < this.lods.length; index += 1) {
+      this.lods[index].update(camera);
+    }
   }
 
   dispose(parent: THREE.Group) {

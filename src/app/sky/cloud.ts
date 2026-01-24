@@ -174,9 +174,9 @@ export class CloudVolume extends THREE.Mesh {
     return (mat.uniforms.opacity.value as number) || 0;
   }
 
-  public update(camera: THREE.Camera): void {
+  public update(cameraPos: THREE.Vector3): void {
     const mat = this.material as THREE.RawShaderMaterial;
-    mat.uniforms.cameraPos.value.copy(camera.position);
+    mat.uniforms.cameraPos.value.copy(cameraPos);
     mat.uniforms.frame.value = (mat.uniforms.frame.value as number) + 1;
   }
 }

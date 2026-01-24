@@ -173,8 +173,8 @@ export class Grass {
     // Simple LOD based on camera distance. Global uniforms (time, camera
     // Position, sun direction) should be updated once per-frame by calling
     // `Grass.updateGlobalUniforms(delta, cameraPos, skyController)` externally.
-    const worldPos = new THREE.Vector3();
-    this.mesh.getWorldPosition(worldPos);
+    // Use the mesh position directly to avoid allocating a temporary Vector3.
+    const worldPos = this.mesh.position;
     const dx = worldPos.x - cameraPos.x;
     const dz = worldPos.z - cameraPos.z;
     const distance = dx * dx + dz * dz;

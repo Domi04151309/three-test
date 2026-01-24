@@ -13,6 +13,10 @@ export class SkyController extends THREE.Group {
   private clouds: Cloud.CloudVolume[] = [];
   private cloudOffsets: THREE.Vector3[] = [];
   private water!: Water;
+  private playerPos: THREE.Vector3 = new THREE.Vector3();
+  private sunWorldPos: THREE.Vector3 = new THREE.Vector3();
+  private dayFog: THREE.Color = new THREE.Color('#e0e0e0');
+  private nightFog: THREE.Color = new THREE.Color('#081328');
 
   private waterLevel = 16;
 
@@ -89,8 +93,8 @@ export class SkyController extends THREE.Group {
   }
 
   private updateLighting(intensityFactor: number): void {
-    const sunWorldPos = this.sun.clone().multiplyScalar(450_000);
-    this.sunLight.position.copy(sunWorldPos);
+    this.sunWorldPos.copy(this.sun).multiplyScalar(450_000);
+    this.sunLight.position.copy(this.sunWorldPos);
 
     this.sunLight.intensity = 0.05 + intensityFactor * 9;
     this.ambient.intensity = 0.5 + intensityFactor * 0.5;
@@ -100,9 +104,7 @@ export class SkyController extends THREE.Group {
       const scene = this.parent as THREE.Scene;
       const fog = scene.fog as THREE.Fog | null;
       if (fog) {
-        const dayFog = new THREE.Color('#e0e0e0');
-        const nightFog = new THREE.Color('#081328');
-        fog.color.copy(nightFog.clone().lerp(dayFog, intensityFactor));
+        fog.color.copy(this.nightFog).lerp(this.dayFog, intensityFactor);
       }
     }
   }
@@ -152,13 +154,16 @@ export class SkyController extends THREE.Group {
     const cloudVisibleThreshold = 0.06;
 
     // Position clouds relative to player and smoothly fade opacity with time of day.
-    const playerPos = new THREE.Vector3();
-    camera.getWorldPosition(playerPos);
+    camera.getWorldPosition(this.playerPos);
     for (let index = 0; index < this.clouds.length; index += 1) {
       const off = this.cloudOffsets[index];
       const cloud = this.clouds[index];
-      cloud.position.set(playerPos.x + off.x, off.y, playerPos.z + off.z);
-      cloud.update(camera);
+      cloud.position.set(
+        this.playerPos.x + off.x,
+        off.y,
+        this.playerPos.z + off.z,
+      );
+      cloud.update(this.playerPos);
 
       const targetOpacity =
         intensityFactor > cloudVisibleThreshold
@@ -176,7 +181,11 @@ export class SkyController extends THREE.Group {
       cloud.visible = nextOpacity > 0.001;
     }
 
-    this.water.position.set(playerPos.x, this.waterLevel, playerPos.z);
+    this.water.position.set(
+      this.playerPos.x,
+      this.waterLevel,
+      this.playerPos.z,
+    );
     const uniforms = this.water.material.uniforms as {
       time: THREE.IUniform<number>;
       sunDirection: THREE.IUniform<THREE.Vector3>;
