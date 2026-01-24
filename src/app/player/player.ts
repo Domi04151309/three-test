@@ -160,6 +160,9 @@ export class Player {
       case 'KeyE':
         if (down) this.inventoryManager.toggleInventory();
         break;
+      case 'KeyQ':
+        if (down) this.inventoryManager.dropCurrent();
+        break;
       case 'Digit1':
       case 'Digit2':
       case 'Digit3':
@@ -217,6 +220,9 @@ export class Player {
       this.moveForward || this.moveBackward || this.moveLeft || this.moveRight;
     this.viewBobbing.update(dt, isMoving);
     this.punchHandler.update(dt);
+
+    // Check for nearby dropped items to auto-pickup
+    this.inventoryManager.update();
 
     if (this.camera instanceof THREE.PerspectiveCamera) {
       const targetFov = this.isZooming ? this.zoomFov : this.defaultFov;

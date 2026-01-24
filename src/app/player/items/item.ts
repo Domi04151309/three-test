@@ -34,6 +34,14 @@ export class Item {
     return this.options.previewOffset;
   }
 
+  get defaultPosition(): THREE.Vector3 | undefined {
+    return this.options.position;
+  }
+
+  get defaultRotation(): THREE.Euler | undefined {
+    return this.options.rotation;
+  }
+
   protected async load(): Promise<void> {
     const { basePath, objectFile, mtlFile, rotation, position } = this.options;
 

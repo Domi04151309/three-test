@@ -74,6 +74,10 @@ export class App {
     player.object.position.set(0, terrain.getHeightAt(0, 0) + 1.8, 0);
     player.enablePointerLockUI(blocker, instructions);
     scene.add(player.object);
+    // Allow inventory to add dropped items into the world scene
+    player.inventoryManager.world = scene;
+    // Let inventory place drops on the terrain surface
+    player.inventoryManager.ground = terrain.getHeightAt.bind(terrain);
 
     this.player = player;
     this.terrain = terrain;
