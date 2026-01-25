@@ -31,6 +31,14 @@ export class Player {
   healthElement: HTMLElement | null = null;
   healthFillElement: HTMLElement | null = null;
   healthTextElement: HTMLElement | null = null;
+  maxStamina = 100;
+  stamina = 100;
+  staminaElement: HTMLElement | null = null;
+  staminaFillElement: HTMLElement | null = null;
+  staminaTextElement: HTMLElement | null = null;
+  readonly staminaDrainRate = 30;
+  readonly staminaRegenRate = 20;
+  readonly healthRegenRate = 5;
   velocity: THREE.Vector3;
   direction: THREE.Vector3;
   moveForward = false;
@@ -111,7 +119,11 @@ export class Player {
     this.healthElement = document.getElementById('health');
     this.healthFillElement = document.getElementById('health-fill');
     this.healthTextElement = document.getElementById('health-text');
+    this.staminaElement = document.getElementById('stamina');
+    this.staminaFillElement = document.getElementById('stamina-fill');
+    this.staminaTextElement = document.getElementById('stamina-text');
     this.updateHealthUI();
+    this.updateStaminaUI();
   }
 
   takeDamage(amount: number): void {
@@ -198,7 +210,11 @@ export class Player {
         break;
       case 'ShiftLeft':
       case 'ShiftRight':
-        this.isSprinting = down;
+        if (down) {
+          if (this.stamina > 0) this.isSprinting = true;
+        } else {
+          this.isSprinting = false;
+        }
         break;
       case 'KeyC':
         this.isZooming = down;
@@ -238,6 +254,21 @@ export class Player {
     this.direction.z = Number(this.moveForward) - Number(this.moveBackward);
     this.direction.x = Number(this.moveRight) - Number(this.moveLeft);
     this.direction.normalize();
+
+    // Stamina handling: drain while sprinting, regen when not.
+    if (this.isSprinting && this.stamina > 0) {
+      this.stamina -= this.staminaDrainRate * dt;
+      if (this.stamina <= 0) {
+        this.stamina = 0;
+        this.isSprinting = false;
+      }
+    } else if (this.stamina < this.maxStamina) {
+      this.stamina += this.staminaRegenRate * dt;
+      if (this.stamina > this.maxStamina) this.stamina = this.maxStamina;
+    } else if (!this.isSprinting && this.health < this.maxHealth) {
+      // Stamina full and not sprinting -> regenerate health instead
+      this.heal(this.healthRegenRate * dt);
+    }
 
     const moveSpeed =
       this.options.speed *
@@ -282,6 +313,17 @@ export class Player {
         this.camera.fov = updatedFov;
         this.camera.updateProjectionMatrix();
       }
+    }
+    this.updateStaminaUI();
+  }
+
+  private updateStaminaUI(): void {
+    if (this.staminaFillElement) {
+      const percentage = (this.stamina / this.maxStamina) * 100;
+      this.staminaFillElement.style.width = `${percentage.toString()}%`;
+    }
+    if (this.staminaTextElement) {
+      this.staminaTextElement.textContent = `${Math.round(this.stamina).toString()} / ${this.maxStamina.toString()}`;
     }
   }
 }
