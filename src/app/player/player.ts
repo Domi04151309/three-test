@@ -1,15 +1,18 @@
 import * as THREE from 'three';
 import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockControls';
 import { createViewModel, ViewModelData } from './view-model';
-import { Sword } from './items/sword';
-import { Axe } from './items/axe';
 import { PlayerOptions } from './types';
 import { ViewBobbing } from './view-bobbing';
 import { PunchHandler } from './punch-handler';
 import { InventoryManager } from './inventory';
 import { attachPlayerInputHandlers } from './player-inputs';
-import { Pickaxe } from './items/pickaxe';
-import { updateHotbarUI } from './inventory-overlay';
+import { initStartingInventory } from './player-init';
+import {
+  updateHealthUI,
+  updateStaminaUI,
+  setupPointerLockUI,
+  handleDeath as uiHandleDeath,
+} from './player-ui';
 
 export class Player {
   object: THREE.Object3D;
@@ -28,12 +31,10 @@ export class Player {
   punchHandler: PunchHandler;
   maxHealth = 100;
   health = 100;
-  healthElement: HTMLElement | null = null;
   healthFillElement: HTMLElement | null = null;
   healthTextElement: HTMLElement | null = null;
   maxStamina = 100;
   stamina = 100;
-  staminaElement: HTMLElement | null = null;
   staminaFillElement: HTMLElement | null = null;
   staminaTextElement: HTMLElement | null = null;
   readonly staminaDrainRate = 30;
@@ -66,7 +67,6 @@ export class Player {
     this.controls = new PointerLockControls(camera, domElement);
     this.object = this.controls.object;
 
-    // Create a simple view-model (hands) and attach to the player/camera
     const vm: ViewModelData = createViewModel();
     this.viewModel = vm.viewModel;
     this.rightHand = vm.rightHand;
@@ -76,26 +76,7 @@ export class Player {
       rightHand: this.rightHand,
     });
 
-    // Load sword for inventory slot 1 (index 0). equip slot 0
-    (async () => {
-      const sword = await Sword.create();
-      this.inventoryManager.inventory[0] = sword;
-      this.inventoryManager.equipSlot(0);
-    })().catch(console.error);
-
-    // Load pickaxe for inventory slot 2.
-    (async () => {
-      const pickaxe = await Pickaxe.create();
-      this.inventoryManager.inventory[1] = pickaxe;
-      updateHotbarUI(this.inventoryManager);
-    })().catch(console.error);
-
-    // Load axe for inventory slot 3.
-    (async () => {
-      const axe = await Axe.create();
-      this.inventoryManager.inventory[2] = axe;
-      updateHotbarUI(this.inventoryManager);
-    })().catch(console.error);
+    initStartingInventory(this.inventoryManager).catch(console.error);
 
     // Initialize helpers for view bobbing and punching
     this.viewBobbing = new ViewBobbing(
@@ -116,49 +97,56 @@ export class Player {
 
     this.detachInputs = attachPlayerInputHandlers(this, domElement);
 
-    this.healthElement = document.getElementById('health');
     this.healthFillElement = document.getElementById('health-fill');
     this.healthTextElement = document.getElementById('health-text');
-    this.staminaElement = document.getElementById('stamina');
     this.staminaFillElement = document.getElementById('stamina-fill');
     this.staminaTextElement = document.getElementById('stamina-text');
-    this.updateHealthUI();
-    this.updateStaminaUI();
+    updateHealthUI(
+      this.health,
+      this.maxHealth,
+      this.healthFillElement,
+      this.healthTextElement,
+    );
+    updateStaminaUI(
+      this.stamina,
+      this.maxStamina,
+      this.staminaFillElement,
+      this.staminaTextElement,
+    );
   }
 
   takeDamage(amount: number): void {
     const dmg = Math.abs(amount);
     this.health = Math.max(0, this.health - dmg);
-    this.updateHealthUI();
-    if (this.health <= 0) this.handleDeath();
+    updateHealthUI(
+      this.health,
+      this.maxHealth,
+      this.healthFillElement,
+      this.healthTextElement,
+    );
+    if (this.health <= 0) uiHandleDeath(this.controls, this.blocker);
   }
 
   heal(amount: number): void {
     const value = Math.abs(amount);
     this.health = Math.min(this.maxHealth, this.health + value);
-    this.updateHealthUI();
+    updateHealthUI(
+      this.health,
+      this.maxHealth,
+      this.healthFillElement,
+      this.healthTextElement,
+    );
   }
 
   setHealth(value: number): void {
     this.health = Math.max(0, Math.min(this.maxHealth, value));
-    this.updateHealthUI();
-    if (this.health <= 0) this.handleDeath();
-  }
-
-  private updateHealthUI(): void {
-    if (this.healthFillElement) {
-      const percentage = (this.health / this.maxHealth) * 100;
-      this.healthFillElement.style.width = `${percentage.toString()}%`;
-    }
-    if (this.healthTextElement) {
-      this.healthTextElement.textContent = `${Math.round(this.health).toString()} / ${this.maxHealth.toString()}`;
-    }
-  }
-
-  private handleDeath(): void {
-    console.log('Player died');
-    this.controls.unlock();
-    if (this.blocker) this.blocker.style.display = 'flex';
+    updateHealthUI(
+      this.health,
+      this.maxHealth,
+      this.healthFillElement,
+      this.healthTextElement,
+    );
+    if (this.health <= 0) uiHandleDeath(this.controls, this.blocker);
   }
 
   enablePointerLockUI(
@@ -166,19 +154,7 @@ export class Player {
     instructions: HTMLElement | null,
   ): void {
     this.blocker = blocker;
-
-    if (instructions)
-      instructions.addEventListener('click', () => {
-        this.controls.lock();
-      });
-
-    this.controls.addEventListener('lock', () => {
-      if (blocker) blocker.style.display = 'none';
-    });
-
-    this.controls.addEventListener('unlock', () => {
-      if (blocker) blocker.style.display = 'flex';
-    });
+    setupPointerLockUI(this.controls, blocker, instructions);
   }
 
   handleKey(code: string, down: boolean): void {
@@ -255,7 +231,6 @@ export class Player {
     this.direction.x = Number(this.moveRight) - Number(this.moveLeft);
     this.direction.normalize();
 
-    // Stamina handling: drain while sprinting, regen when not.
     if (this.isSprinting && this.stamina > 0) {
       this.stamina -= this.staminaDrainRate * dt;
       if (this.stamina <= 0) {
@@ -298,7 +273,6 @@ export class Player {
     this.viewBobbing.update(dt, isMoving);
     this.punchHandler.update(dt);
 
-    // Check for nearby dropped items to auto-pickup
     this.inventoryManager.update();
 
     if (this.camera instanceof THREE.PerspectiveCamera) {
@@ -314,16 +288,11 @@ export class Player {
         this.camera.updateProjectionMatrix();
       }
     }
-    this.updateStaminaUI();
-  }
-
-  private updateStaminaUI(): void {
-    if (this.staminaFillElement) {
-      const percentage = (this.stamina / this.maxStamina) * 100;
-      this.staminaFillElement.style.width = `${percentage.toString()}%`;
-    }
-    if (this.staminaTextElement) {
-      this.staminaTextElement.textContent = `${Math.round(this.stamina).toString()} / ${this.maxStamina.toString()}`;
-    }
+    updateStaminaUI(
+      this.stamina,
+      this.maxStamina,
+      this.staminaFillElement,
+      this.staminaTextElement,
+    );
   }
 }
