@@ -19,6 +19,7 @@ export class Player {
   readonly zoomFov = 20;
   readonly zoomSpeed = 10;
   defaultFov = 75;
+  readonly sprintFovIncrease = 10;
   blocker: HTMLElement | null = null;
   viewModel: THREE.Group;
   rightHand: THREE.Mesh;
@@ -270,7 +271,10 @@ export class Player {
     this.inventoryManager.update();
 
     if (this.camera instanceof THREE.PerspectiveCamera) {
-      const targetFov = this.isZooming ? this.zoomFov : this.defaultFov;
+      const baseTargetFov = this.isZooming ? this.zoomFov : this.defaultFov;
+      let targetFov = baseTargetFov;
+      if (!this.isZooming && this.isSprinting)
+        targetFov += this.sprintFovIncrease;
       const zoomParameter = 1 - Math.exp(-this.zoomSpeed * dt);
       const updatedFov =
         this.camera.fov + (targetFov - this.camera.fov) * zoomParameter;
