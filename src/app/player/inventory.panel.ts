@@ -2,9 +2,9 @@ import {
   createHotbarPreview,
   disposeHotbarPreview,
   HotbarPreviewEntry,
-} from './hotbar-preview';
-import type { InventoryManager } from './inventory';
-import { updateInventoryOverlay, updateHotbarUI } from './inventory-overlay';
+} from './hotbar.preview';
+import type { InventoryManager } from './inventory.manager';
+import { updateInventoryOverlay, updateHotbarUI } from './inventory.overlay';
 
 export function openInventory(manager: InventoryManager): void {
   if (manager.inventoryOpen) return;
@@ -38,7 +38,6 @@ export function openInventory(manager: InventoryManager): void {
   title.id = 'inventory-title';
   title.textContent = 'Inventory';
 
-  // Main inventory grid (27 slots: indexes 9..35)
   const mainGrid = document.createElement('ul');
   mainGrid.id = 'inventory-grid';
   mainGrid.classList.add('inventory-grid');
@@ -57,7 +56,6 @@ export function openInventory(manager: InventoryManager): void {
     mainGrid.append(li);
   }
 
-  // Hotbar row for overlay (first 9 slots)
   const hotbarWrap = document.createElement('ul');
   hotbarWrap.id = 'inventory-hotbar';
   hotbarWrap.classList.add('inventory-hotbar');
@@ -111,7 +109,6 @@ export function closeInventory(manager: InventoryManager): void {
     } else {
       manager.inventory[restoredIndex] = manager.draggingItem;
     }
-    // If the item was restored into the currently equipped slot, equip it
     if (restoredIndex !== -1 && restoredIndex === manager.currentSlot) {
       manager.equipSlot(restoredIndex);
     }
@@ -197,7 +194,6 @@ export function handleInventorySlotClick(
 
   const target = manager.inventory[index];
   if (!target) {
-    // If placing into the currently equipped slot, remove existing equipped object first
     if (manager.currentSlot === index) {
       const currentlyEquipped = manager.inventory[manager.currentSlot];
       if (
@@ -215,14 +211,12 @@ export function handleInventorySlotClick(
       disposeHotbarPreview(manager.draggingPreview);
       manager.draggingPreview = null;
     }
-    // If we placed into the currently equipped slot, equip it so the view updates
     if (manager.currentSlot === index) manager.equipSlot(index);
     updateInventoryOverlay(manager);
     updateHotbarUI(manager);
     return;
   }
 
-  // If swapping into the currently equipped slot, remove the old equipped object first
   if (
     manager.currentSlot === index &&
     target.object &&
@@ -250,6 +244,5 @@ export function handleInventorySlotClick(
 
   updateInventoryOverlay(manager);
   updateHotbarUI(manager);
-  // If we placed into the currently equipped slot, equip it so the view updates
   if (manager.currentSlot === index) manager.equipSlot(index);
 }

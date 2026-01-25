@@ -1,13 +1,13 @@
 import * as THREE from 'three';
 import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockControls';
-import { createViewModel, ViewModelData } from './view-model';
-import { PlayerOptions } from './types';
-import { ViewBobbing } from './view-bobbing';
-import { PunchHandler } from './punch-handler';
-import { InventoryManager } from './inventory';
-import { attachPlayerInputHandlers } from './player-inputs';
-import { initStartingInventory } from './player-init';
-import { updateHealthUI, updateStaminaUI } from './player-ui';
+import { createViewModel, ViewModelData } from './view-model.factory';
+import { PlayerOptions } from './player.types';
+import { ViewBobbing } from './view-bobbing.effect';
+import { PunchHandler } from './punch.handler';
+import { InventoryManager } from './inventory.manager';
+import { attachPlayerInputHandlers } from './player.controls';
+import { initStartingInventory } from './player.setup';
+import { updateHealthUI, updateStaminaUI } from './player.hud';
 
 export class Player {
   object: THREE.Object3D;
@@ -73,7 +73,6 @@ export class Player {
 
     initStartingInventory(this.inventoryManager).catch(console.error);
 
-    // Initialize helpers for view bobbing and punching
     this.viewBobbing = new ViewBobbing(
       this.viewModel,
       vm.baseViewPos,

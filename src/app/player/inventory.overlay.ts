@@ -2,8 +2,8 @@ import {
   createHotbarPreview,
   disposeHotbarPreview,
   HotbarPreviewEntry,
-} from './hotbar-preview';
-import type { InventoryManager } from './inventory';
+} from './hotbar.preview';
+import type { InventoryManager } from './inventory.manager';
 
 export function updateInventoryOverlay(manager: InventoryManager): void {
   if (!manager.inventoryOverlay) return;

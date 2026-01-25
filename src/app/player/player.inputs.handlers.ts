@@ -1,4 +1,4 @@
-import type { Player } from './player';
+import type { Player } from './player.entity';
 
 export function handleKey(player: Player, code: string, down: boolean): void {
   switch (code) {

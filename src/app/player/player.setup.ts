@@ -1,8 +1,8 @@
-import { InventoryManager } from './inventory';
+import { InventoryManager } from './inventory.manager';
 import { Sword } from './items/sword';
 import { Pickaxe } from './items/pickaxe';
 import { Axe } from './items/axe';
-import { updateHotbarUI } from './inventory-overlay';
+import { updateHotbarUI } from './inventory.overlay';
 
 export async function initStartingInventory(
   inv: InventoryManager,

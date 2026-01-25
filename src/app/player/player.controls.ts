@@ -1,5 +1,5 @@
-import { Player } from './player';
-import { handleKey } from './player.methods.inputs';
+import { Player } from './player.entity';
+import { handleKey } from './player.inputs.handlers';
 
 export function attachPlayerInputHandlers(
   player: Player,
@@ -13,8 +13,6 @@ export function attachPlayerInputHandlers(
   };
 
   const onKeyDown = (event: KeyboardEvent) => {
-    // Always allow inventory toggle to pass through so player can open/close
-    // Inventory even when the pause blocker is visible.
     if (event.code === 'KeyE') {
       handleKey(player, event.code, true);
       return;
@@ -35,7 +33,6 @@ export function attachPlayerInputHandlers(
   const onMouseDown = (event: MouseEvent) => {
     if (event.button !== 0) return;
     if (isBlockedByMenu()) return;
-    // Disable punch while inventory is open
     if (player.inventoryManager.inventoryOpen) return;
     player.punchHandler.startPunch();
   };
@@ -46,11 +43,9 @@ export function attachPlayerInputHandlers(
     if (Math.abs(player.wheelAccumulator) < threshold) return;
     const directionSign = player.wheelAccumulator > 0 ? 1 : -1;
     player.wheelAccumulator = 0;
-    // Only cycle through the hotbar (first 9 slots), not the whole inventory
     const hotbarLength = 9;
     let next = player.inventoryManager.currentSlot;
     if (next === -1) next = 0;
-    // If currentSlot is outside hotbar (e.g. -1 or >8), clamp into hotbar range
     if (next >= hotbarLength || next < 0) next = 0;
     next = (next + directionSign + hotbarLength) % hotbarLength;
     player.inventoryManager.equipSlot(next);

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { PlayerOptions } from './types';
+import { PlayerOptions } from './player.types';
 
 export class PunchHandler {
   private rightHand: THREE.Mesh;

@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import Stats from 'three/addons/libs/stats.module.js';
 import { createComposer } from './postprocessing';
-import { Player } from './player/player';
+import { Player } from './player/player.entity';
 import { SkyController } from './sky/sky';
 import { Terrain } from './terrain/terrain';
 import { createRenderer } from './renderer';
@@ -10,8 +10,8 @@ import { Compass } from './gui/compass';
 import { PositionDisplay } from './gui/position';
 import { FullscreenMap } from './gui/fullscreen-map';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
-import { enablePointerLockUI } from './player/player.methods.ui';
-import { update } from './player/player.methods.update';
+import { enablePointerLockUI } from './player/player.ui.handlers';
+import { update } from './player/player.update.handlers';
 
 export class App {
   public player: Player;

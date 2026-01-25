@@ -1,7 +1,7 @@
 import * as THREE from 'three';
-import type { Player } from './player';
-import { updateStaminaUI } from './player-ui';
-import { heal } from './player.methods.ui';
+import type { Player } from './player.entity';
+import { updateStaminaUI } from './player.hud';
+import { heal } from './player.ui.handlers';
 
 export function update(player: Player, delta: number): void {
   const dt = Math.min(delta, 0.05);

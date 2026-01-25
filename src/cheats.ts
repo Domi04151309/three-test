@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { App } from './app/app';
-import { setHealth, setStamina } from './app/player/player.methods.ui';
+import { setHealth, setStamina } from './app/player/player.ui.handlers';
 
 export class Cheats {
   constructor(private app: App) {}

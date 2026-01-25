@@ -9,7 +9,6 @@ export type HotbarPreviewEntry = {
   size: number;
 };
 
-// Shared renderer used for all previews to avoid creating many WebGL contexts
 class SharedPreviewRenderer {
   private static instance: SharedPreviewRenderer | null = null;
   readonly renderer: THREE.WebGLRenderer;
@@ -92,7 +91,6 @@ export function createHotbarPreview(item: Item, size = 64): HotbarPreviewEntry {
   camera.position.set(0, 0, cameraDistance + 0.2);
   camera.lookAt(0, 0, 0);
 
-  // Render into target canvas using shared renderer
   SharedPreviewRenderer.getInstance().renderToCanvas(
     scene,
     camera,

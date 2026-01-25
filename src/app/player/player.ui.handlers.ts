@@ -1,10 +1,10 @@
-import type { Player } from './player';
+import type { Player } from './player.entity';
 import {
   updateHealthUI,
   updateStaminaUI,
   setupPointerLockUI,
   handleDeath as uiHandleDeath,
-} from './player-ui';
+} from './player.hud';
 
 export function takeDamage(player: Player, amount: number): void {
   const dmg = Math.abs(amount);
