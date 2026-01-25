@@ -95,7 +95,7 @@ export class InventoryManager {
     const worldPos = new THREE.Vector3();
     for (let index = 0; index < this.dropped.length; index++) {
       const rec = this.dropped[index];
-      rec.object.rotation.y -= 0.04;
+      rec.object.rotateOnWorldAxis(new THREE.Vector3(0, 1, 0), -0.04);
       if (now - rec.droppedAt < 800) continue;
       rec.object.getWorldPosition(worldPos);
       const dx = worldPos.x - playerPos.x;
@@ -105,6 +105,8 @@ export class InventoryManager {
         const freeIndex = this.inventory.indexOf(null);
         if (freeIndex === -1) return;
         rec.object.scale.setScalar(rec.originalScale);
+        rec.object.position.copy(rec.item.defaultPosition);
+        rec.object.rotation.copy(rec.item.defaultRotation);
         this.inventory[freeIndex] = rec.item;
         if (this.world) this.world.remove(rec.object);
         this.dropped.splice(index, 1);
@@ -127,10 +129,8 @@ export class InventoryManager {
 
     const next = this.inventory[this.currentSlot];
     if (next && next.object) {
-      if (next.defaultPosition) next.object.position.copy(next.defaultPosition);
-      else next.object.position.set(0, 0, 0);
-      if (next.defaultRotation) next.object.rotation.copy(next.defaultRotation);
-      else next.object.rotation.set(0, 0, 0);
+      next.object.position.copy(next.defaultPosition);
+      next.object.rotation.copy(next.defaultRotation);
       this.rightHand.add(next.object);
     }
 

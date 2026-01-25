@@ -6,11 +6,11 @@ export interface ItemOptions {
   basePath: string;
   objectFile: string;
   mtlFile: string;
-  scale?: number;
-  rotation?: THREE.Euler;
+  scale: number;
+  rotation: THREE.Euler;
   previewRotation?: THREE.Euler;
   previewOffset?: THREE.Vector3;
-  position?: THREE.Vector3;
+  position: THREE.Vector3;
   material?: THREE.Material;
 }
 
@@ -34,16 +34,17 @@ export class Item {
     return this.options.previewOffset;
   }
 
-  get defaultPosition(): THREE.Vector3 | undefined {
+  get defaultPosition(): THREE.Vector3 {
     return this.options.position;
   }
 
-  get defaultRotation(): THREE.Euler | undefined {
+  get defaultRotation(): THREE.Euler {
     return this.options.rotation;
   }
 
   protected async load(): Promise<void> {
-    const { basePath, objectFile, mtlFile, rotation, position } = this.options;
+    const { basePath, objectFile, mtlFile, rotation, position, scale } =
+      this.options;
 
     const group = await new Promise<THREE.Group>((resolve, reject) => {
       const mtlLoader = new MTLLoader();
@@ -73,11 +74,10 @@ export class Item {
       );
     });
 
-    const scale = this.options.scale ?? 1;
     group.scale.setScalar(scale);
 
-    if (rotation) group.rotation.copy(rotation);
-    if (position) group.position.copy(position);
+    group.rotation.copy(rotation);
+    group.position.copy(position);
 
     this.group = group;
   }
