@@ -8,6 +8,7 @@ export class Cheats {
     console.table({
       'help()': 'Show this message',
       'health(value)': 'Set player health (0..maxHealth)',
+      'stamina(value)': 'Set player stamina (0..maxStamina)',
       'time(value)': 'Set normalized time of day (0..1)',
       'teleport(x, y, z)': 'Move the player to the given coordinates',
     });
@@ -28,6 +29,22 @@ export class Cheats {
     this.app.player.setHealth(value);
 
     console.log('Player health set to', value);
+  }
+
+  stamina(value: number): void {
+    if (typeof value !== 'number' || Number.isNaN(value)) {
+      console.warn('Stamina expects a numeric argument');
+      return;
+    }
+
+    if (!Number.isFinite(value)) {
+      console.warn('Stamina expects a finite numeric value');
+      return;
+    }
+
+    this.app.player.setStamina(value);
+
+    console.log('Player stamina set to', value);
   }
 
   time(value: number): void {

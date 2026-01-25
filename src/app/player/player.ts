@@ -149,6 +149,16 @@ export class Player {
     if (this.health <= 0) uiHandleDeath(this.controls, this.blocker);
   }
 
+  setStamina(value: number): void {
+    this.stamina = Math.max(0, Math.min(this.maxStamina, value));
+    updateStaminaUI(
+      this.stamina,
+      this.maxStamina,
+      this.staminaFillElement,
+      this.staminaTextElement,
+    );
+  }
+
   enablePointerLockUI(
     blocker: HTMLElement | null,
     instructions: HTMLElement | null,
