@@ -1,4 +1,5 @@
 import { Player } from './player';
+import { handleKey } from './player.methods.inputs';
 
 export function attachPlayerInputHandlers(
   player: Player,
@@ -15,20 +16,20 @@ export function attachPlayerInputHandlers(
     // Always allow inventory toggle to pass through so player can open/close
     // Inventory even when the pause blocker is visible.
     if (event.code === 'KeyE') {
-      player.handleKey(event.code, true);
+      handleKey(player, event.code, true);
       return;
     }
     if (isBlockedByMenu()) return;
-    player.handleKey(event.code, true);
+    handleKey(player, event.code, true);
   };
 
   const onKeyUp = (event: KeyboardEvent) => {
     if (event.code === 'KeyE') {
-      player.handleKey(event.code, false);
+      handleKey(player, event.code, false);
       return;
     }
     if (isBlockedByMenu()) return;
-    player.handleKey(event.code, false);
+    handleKey(player, event.code, false);
   };
 
   const onMouseDown = (event: MouseEvent) => {

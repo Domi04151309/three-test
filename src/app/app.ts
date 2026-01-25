@@ -10,6 +10,8 @@ import { Compass } from './gui/compass';
 import { PositionDisplay } from './gui/position';
 import { FullscreenMap } from './gui/fullscreen-map';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
+import { enablePointerLockUI } from './player/player.methods.ui';
+import { update } from './player/player.methods.update';
 
 export class App {
   public player: Player;
@@ -72,7 +74,7 @@ export class App {
     });
     // Place player above terrain at start
     player.object.position.set(0, terrain.getHeightAt(0, 0) + 1.8, 0);
-    player.enablePointerLockUI(blocker, instructions);
+    enablePointerLockUI(player, blocker, instructions);
     scene.add(player.object);
     // Allow inventory to add dropped items into the world scene
     player.inventoryManager.world = scene;
@@ -106,7 +108,7 @@ export class App {
     renderer.setAnimationLoop(() => {
       const delta = clock.getDelta();
       skyController.update(camera, delta);
-      player.update(delta);
+      update(player, delta);
       compass.update(camera);
       positionDisplay.update(player.object.position);
       terrain.updatePlayerPosition(player.object.position);
